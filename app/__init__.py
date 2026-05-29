@@ -1,0 +1,1 @@
+"""Recipe RAG chatbot package."""

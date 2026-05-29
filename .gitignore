@@ -1,0 +1,12 @@
+.env
+__pycache__/
+*.pyc
+.DS_Store
+.playwright-mcp/
+data/faiss_index/
+data/joc_pages/*
+!data/joc_pages/.gitkeep
+data/*.db
+data/*.csv
+data/*.jsonl
+.streamlit/secrets.toml
