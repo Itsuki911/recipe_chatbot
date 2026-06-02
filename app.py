@@ -6,11 +6,13 @@ from pathlib import Path
 import streamlit as st
 
 try:
-    from app.config import GOOGLE_API_KEY, LOCAL_RECIPE_DIR, VECTOR_INDEX_DIR
+    from app.config import GOOGLE_API_KEY, LOCAL_RECIPE_DIR, QWEN_BASE_URL, QWEN_MODEL, VECTOR_INDEX_DIR
 except ImportError:
     # config.pyのimport前に壊れても、Streamlit画面とログ出力を最低限続けるためのfallbackです。
     fallback_data_dir = Path(__file__).resolve().parent / "data"
     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+    QWEN_BASE_URL = os.getenv("QWEN_BASE_URL", "http://localhost:11434/v1")
+    QWEN_MODEL = os.getenv("QWEN_MODEL", "qwen3:4b")
     VECTOR_INDEX_DIR = fallback_data_dir / "turbovec_index"
     LOCAL_RECIPE_DIR = fallback_data_dir / "joc_pages"
 
@@ -41,6 +43,14 @@ def load_chatbot(force_rebuild_index: bool = False):
     from app.rag_chatbot import RecipeRAGChatbot
 
     return RecipeRAGChatbot(force_rebuild_index=force_rebuild_index)
+
+
+@st.cache_resource(show_spinner="Loading Qwen RAG chatbot...")
+def load_qwen_chatbot(force_rebuild_index: bool = False):
+    # Qwen RAGも同じRAG indexを使いますが、LLMが別なのでGemini版とは別cacheにします。
+    from app.qwen import QwenRAGChatbot
+
+    return QwenRAGChatbot(force_rebuild_index=force_rebuild_index)
 
 
 def apply_styles() -> None:
@@ -164,7 +174,15 @@ def render_sidebar() -> tuple[bool, str]:
         # このradioがメイン画面の「ページ切り替え」として働きます。
         mode = st.radio(
             "モード",
-            ["RAG Chat", "Gemini Chat", "Crawl4AI Check", "JSON + PostgreSQL", "DB DataFrame"],
+            [
+                "RAG Chat",
+                "Qwen RAG Chat",
+                "Qwen Chat",
+                "Gemini Chat",
+                "Crawl4AI Check",
+                "JSON + PostgreSQL",
+                "DB DataFrame",
+            ],
             label_visibility="collapsed",
         )
         st.divider()
@@ -180,6 +198,7 @@ def render_sidebar() -> tuple[bool, str]:
                         saved = save_recipe_page_from_url(recipe_url)
                         # 新しい文書を保存したので、古いRAG chatbot cacheを破棄します。
                         load_chatbot.clear()
+                        load_qwen_chatbot.clear()
                         # 次回Chat/JSON時にindex再構築を自動実行するためのフラグです。
                         st.session_state.rebuild_index_next = True
                         st.success(f"保存しました: {saved.path.name} ({saved.text_chars} chars)")
@@ -211,6 +230,7 @@ def render_sidebar() -> tuple[bool, str]:
                             )
                             # Deep Agentが保存したページもRAGの新規材料なので、cacheを消して再構築予約します。
                             load_chatbot.clear()
+                            load_qwen_chatbot.clear()
                             st.session_state.rebuild_index_next = True
                             st.success(f"{len(result.saved_pages)}件保存しました。")
                             st.caption(result.notes)
@@ -252,6 +272,28 @@ def ensure_gemini_chat_history() -> None:
             {
                 "role": "assistant",
                 "content": "こんにちは。RAGを使わず、Geminiだけで回答します。",
+            }
+        ]
+
+
+def ensure_qwen_chat_history() -> None:
+    # Ollama Qwen RAG用の会話履歴です。Gemini RAGとは分けて比較しやすくします。
+    if "qwen_messages" not in st.session_state:
+        st.session_state.qwen_messages = [
+            {
+                "role": "assistant",
+                "content": "こんにちは。Ollama上のQwenを使い、同じRAG情報を元に回答します。",
+            }
+        ]
+
+
+def ensure_qwen_only_chat_history() -> None:
+    # Qwen単体テスト用の履歴です。RAGありのQwen履歴とは分けます。
+    if "qwen_only_messages" not in st.session_state:
+        st.session_state.qwen_only_messages = [
+            {
+                "role": "assistant",
+                "content": "こんにちは。RAGを使わず、Ollama上のQwenだけで回答します。",
             }
         ]
 
@@ -305,6 +347,85 @@ def render_chat(force_rebuild: bool) -> None:
         st.session_state.messages.append({"role": "assistant", "content": response.answer})
 
 
+def render_qwen_rag_chat(force_rebuild: bool) -> None:
+    # Qwen RAG Chatページです。検索部分はGemini版と同じで、回答生成だけOllama Qwenに切り替えます。
+    st.subheader("Qwen RAG Chat")
+    st.caption(f"Model: `{QWEN_MODEL}` / Base URL: `{QWEN_BASE_URL}`")
+
+    for message in st.session_state.qwen_messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+    if question := st.chat_input("例: Qwenで、だし巻き卵の材料と作り方を説明して"):
+        should_rebuild = force_rebuild or st.session_state.get("rebuild_index_next", False)
+        if not recipe_knowledge_ready(should_rebuild):
+            show_missing_recipe_data_message()
+            st.stop()
+        try:
+            chatbot = load_qwen_chatbot(should_rebuild)
+            st.session_state.rebuild_index_next = False
+        except RuntimeError as exc:
+            show_recipe_source_error(exc)
+            st.stop()
+
+        st.session_state.qwen_messages.append({"role": "user", "content": question})
+        with st.chat_message("user"):
+            st.markdown(question)
+        with st.chat_message("assistant"):
+            try:
+                with st.spinner("RAG検索後、Ollama Qwenで回答を作成中..."):
+                    response = chatbot.answer(question)
+            except Exception as exc:
+                log_error("Qwen RAG chat response generation", exc, details=f"question={question}")
+                error_message = (
+                    "Qwen RAG回答生成中にエラーが発生しました。"
+                    "Ollamaが起動しているか、`ollama run qwen3:4b` が動くか確認してください。"
+                )
+                show_generation_error(exc, error_message)
+                st.session_state.qwen_messages.append({"role": "assistant", "content": error_message})
+                st.stop()
+            st.markdown(response.answer)
+            if response.sources:
+                st.caption("Sources")
+                st.markdown(
+                    " ".join(f'<span class="source-chip">{url}</span>' for url in response.sources),
+                    unsafe_allow_html=True,
+                )
+        st.session_state.qwen_messages.append({"role": "assistant", "content": response.answer})
+
+
+def render_qwen_chat() -> None:
+    # Qwen単体テストページです。RAG、DB、mem0を通さずOllama Qwenだけを呼びます。
+    from app.qwen import ask_qwen
+
+    st.subheader("Qwen-only Chat")
+    st.caption(f"RAGなし。Model: `{QWEN_MODEL}` / Base URL: `{QWEN_BASE_URL}`")
+
+    for message in st.session_state.qwen_only_messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+    if question := st.chat_input("例: Qwenだけで、だし巻き卵の作り方を説明して"):
+        st.session_state.qwen_only_messages.append({"role": "user", "content": question})
+        with st.chat_message("user"):
+            st.markdown(question)
+        with st.chat_message("assistant"):
+            try:
+                with st.spinner("Ollama Qwenに直接問い合わせ中..."):
+                    answer = ask_qwen(question)
+            except Exception as exc:
+                log_error("Qwen-only chat generation", exc, details=f"question={question}")
+                error_message = (
+                    "Qwen単体チャットの回答生成中にエラーが発生しました。"
+                    "Ollamaが起動しているか、`ollama run qwen3:4b` が動くか確認してください。"
+                )
+                show_generation_error(exc, error_message)
+                st.session_state.qwen_only_messages.append({"role": "assistant", "content": error_message})
+                st.stop()
+            st.markdown(answer)
+        st.session_state.qwen_only_messages.append({"role": "assistant", "content": answer})
+
+
 def render_gemini_chat() -> None:
     # Gemini単体テストページです。RAG、DB、mem0を通さずGemini APIだけを呼びます。
     from app.gemini_chatbot import ask_gemini
@@ -355,6 +476,7 @@ def render_json_mode(force_rebuild: bool) -> None:
                 if should_rebuild:
                     # 新しいローカル文書を反映するため、cache済みchatbotを破棄します。
                     load_chatbot.clear()
+                    load_qwen_chatbot.clear()
                 result = generate_recipe_json(question, save_to_db=True, force_rebuild_index=should_rebuild)
                 st.session_state.rebuild_index_next = False
             except RuntimeError as exc:
@@ -431,12 +553,18 @@ def main() -> None:
     apply_styles()
     force_rebuild, mode = render_sidebar()
     ensure_chat_history()
+    ensure_qwen_chat_history()
+    ensure_qwen_only_chat_history()
     ensure_gemini_chat_history()
     st.title("Recipe Inference RAG Chatbot")
 
     # サイドバーのradioで選ばれたモードごとに、描画関数を切り替えます。
     if mode == "RAG Chat":
         render_chat(force_rebuild)
+    elif mode == "Qwen RAG Chat":
+        render_qwen_rag_chat(force_rebuild)
+    elif mode == "Qwen Chat":
+        render_qwen_chat()
     elif mode == "Gemini Chat":
         render_gemini_chat()
     elif mode == "Crawl4AI Check":

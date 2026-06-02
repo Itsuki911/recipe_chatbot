@@ -28,6 +28,12 @@ DATABASE_URL = os.getenv(
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
+# OllamaのOpenAI互換APIでローカルQwenを使うための設定です。
+# QWEN_API_KEYはOllamaでは実認証に使われませんが、ChatOpenAIの引数として必要です。
+QWEN_BASE_URL = os.getenv("QWEN_BASE_URL", "http://localhost:11434/v1")
+QWEN_MODEL = os.getenv("QWEN_MODEL", "qwen3:4b")
+QWEN_API_KEY = os.getenv("QWEN_API_KEY", "ollama")
+
 # RAGの構成は環境変数で切り替えられます。
 # デフォルトは Gemini + FastEmbed + TurboVec です。
 HF_MODEL_ID = os.getenv("HF_MODEL_ID", "google/gemma-4-E2B-it")
