@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import sys
 from pathlib import Path
 
 import streamlit as st
@@ -9,6 +8,7 @@ import streamlit as st
 try:
     from app.config import GOOGLE_API_KEY, LOCAL_RECIPE_DIR, VECTOR_INDEX_DIR
 except ImportError:
+    # config.pyのimport前に壊れても、Streamlit画面とログ出力を最低限続けるためのfallbackです。
     fallback_data_dir = Path(__file__).resolve().parent / "data"
     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
     VECTOR_INDEX_DIR = fallback_data_dir / "turbovec_index"
@@ -18,6 +18,7 @@ try:
     from app.error_logger import log_error
 except ImportError:
     def log_error(context: str, error: BaseException, details: str | None = None) -> None:
+        # error_logger.py自体が読めない場合でも、ERROR_LOG.mdへ簡易ログを残します。
         error_log_path = Path(__file__).resolve().parent / "ERROR_LOG.md"
         error_log_path.parent.mkdir(parents=True, exist_ok=True)
         error_log_path.open("a", encoding="utf-8").write(
@@ -29,17 +30,21 @@ except ImportError:
         )
 
 
+# Streamlitページ全体の設定です。最初のStreamlit命令として呼ぶ必要があります。
 st.set_page_config(page_title="Recipe RAG Chatbot", page_icon="🍱", layout="wide")
 
 
 @st.cache_resource(show_spinner="Loading recipe knowledge base...")
 def load_chatbot(force_rebuild_index: bool = False):
+    # RAG chatbotの初期化はembedding/index読み込みが重いため、Streamlitのresource cacheに載せます。
+    # load_chatbot.clear() を呼ぶと、次回アクセス時にindexを再読み込み・再構築できます。
     from app.rag_chatbot import RecipeRAGChatbot
 
     return RecipeRAGChatbot(force_rebuild_index=force_rebuild_index)
 
 
 def apply_styles() -> None:
+    # 画面全体の幅、サイドバー色、source表示用chipだけをCSSで軽く整えます。
     st.markdown(
         """
         <style>
@@ -57,6 +62,7 @@ def apply_styles() -> None:
 
 
 def show_recipe_source_error(exc: Exception) -> None:
+    # RAG用データの読み込みに失敗した時の専用エラー表示です。
     log_error("Recipe source loading", exc)
     if is_gemini_key_error(exc):
         show_gemini_key_error(exc)
@@ -73,6 +79,7 @@ def show_recipe_source_error(exc: Exception) -> None:
 
 
 def is_gemini_key_error(exc: Exception) -> bool:
+    # Gemini APIキー由来のエラーかどうかを文字列でざっくり判定します。
     message = str(exc)
     return (
         "GOOGLE_API_KEY" in message
@@ -83,6 +90,7 @@ def is_gemini_key_error(exc: Exception) -> bool:
 
 
 def show_gemini_key_error(exc: Exception) -> None:
+    # Gemini APIキー不足・漏洩済み・権限エラーの時に、ユーザーが次に取る行動を表示します。
     message = str(exc)
     if "reported as leaked" in message:
         st.error("Gemini API keyが漏洩済みとして拒否されました。")
@@ -101,6 +109,7 @@ def show_gemini_key_error(exc: Exception) -> None:
 
 
 def show_generation_error(exc: Exception, fallback_message: str) -> None:
+    # Chat/JSON/Gemini回答生成で共通利用するエラー表示です。
     if is_gemini_key_error(exc):
         show_gemini_key_error(exc)
         return
@@ -111,6 +120,7 @@ def show_generation_error(exc: Exception, fallback_message: str) -> None:
 
 
 def has_local_recipe_files() -> bool:
+    # data/joc_pages に保存済みのレシピ文書があるか確認します。
     if not LOCAL_RECIPE_DIR.exists():
         return False
     return any(
@@ -120,16 +130,20 @@ def has_local_recipe_files() -> bool:
 
 
 def has_vector_index() -> bool:
+    # TurboVec indexがすでに作成済みか確認します。
     return VECTOR_INDEX_DIR.exists() and any(VECTOR_INDEX_DIR.iterdir())
 
 
 def recipe_knowledge_ready(force_rebuild: bool) -> bool:
+    # RAG実行前の準備確認です。
+    # 再構築する場合は元データが必要で、再構築しない場合は既存indexだけでも動けます。
     if force_rebuild:
         return has_local_recipe_files()
     return has_vector_index() or has_local_recipe_files()
 
 
 def show_missing_recipe_data_message() -> None:
+    # RAGに必要なローカル文書/indexがない時の案内です。
     st.warning("RAGに使えるレシピデータがまだありません。")
     st.info(
         "左サイドバーの「ページをdataに保存」からJust One CookbookのレシピURLを保存してください。"
@@ -138,16 +152,25 @@ def show_missing_recipe_data_message() -> None:
 
 
 def render_sidebar() -> tuple[bool, str]:
-    from app.scraper import run_deep_agent_recipe_collection, save_recipe_page_from_url
+    # サイドバーでは、画面モード選択・RAG index再構築・レシピページ保存を扱います。
+    from app.deep_agent import run_deep_agent_recipe_collection_with_details
+    from app.scraper import save_recipe_page_from_url
 
     with st.sidebar:
         st.title("Recipe RAG")
         st.caption("Just One Cookbookを検索して、和食レシピ推論に特化して回答します。")
+        # このボタンを押した場合、次回RAG実行時に既存indexではなく文書から作り直します。
         force_rebuild = st.button("RAGインデックスを再作成")
-        mode = st.radio("モード", ["Chat", "JSON + PostgreSQL", "DB DataFrame"], label_visibility="collapsed")
+        # このradioがメイン画面の「ページ切り替え」として働きます。
+        mode = st.radio(
+            "モード",
+            ["RAG Chat", "Gemini Chat", "Crawl4AI Check", "JSON + PostgreSQL", "DB DataFrame"],
+            label_visibility="collapsed",
+        )
         st.divider()
 
         with st.expander("ページをdataに保存", expanded=True):
+            # URLを直接指定してレシピページを保存する、最も確実な収集方法です。
             recipe_url = st.text_input("Recipe URL", placeholder="https://www.justonecookbook.com/tonjiru/")
             if st.button("URLを保存", use_container_width=True):
                 if not recipe_url:
@@ -155,7 +178,9 @@ def render_sidebar() -> tuple[bool, str]:
                 else:
                     try:
                         saved = save_recipe_page_from_url(recipe_url)
+                        # 新しい文書を保存したので、古いRAG chatbot cacheを破棄します。
                         load_chatbot.clear()
+                        # 次回Chat/JSON時にindex再構築を自動実行するためのフラグです。
                         st.session_state.rebuild_index_next = True
                         st.success(f"保存しました: {saved.path.name} ({saved.text_chars} chars)")
                         st.caption("次回のChat/JSON実行時にRAGインデックスを自動で再作成します。")
@@ -165,41 +190,52 @@ def render_sidebar() -> tuple[bool, str]:
                         st.code(str(exc))
 
         with st.expander("Deep Agent自動収集"):
-            st.warning("Deep Agent収集はLLMと複数回のWeb取得を使うため、数分かかることがあります。")
-            deep_agent_unavailable = sys.version_info < (3, 11) or not GOOGLE_API_KEY
-            if sys.version_info < (3, 11):
-                st.caption("Deep AgentsはPython 3.11以上が必要です。現在の環境では通常のURL保存を使ってください。")
-            elif not GOOGLE_API_KEY:
-                st.caption("Deep Agentsを使うには `.env` に `GOOGLE_API_KEY` が必要です。")
+            # LangGraph Deep Agentは検索クエリ作成、候補URL収集、URL選択、保存を順番に実行します。
+            st.warning("LangChain/LangGraph Deep Agent収集はLLMと複数回のWeb取得を使うため、数分かかることがあります。")
+            deep_agent_unavailable = not GOOGLE_API_KEY
+            if not GOOGLE_API_KEY:
+                st.caption("LangGraph Deep Agentを使うには `.env` に `GOOGLE_API_KEY` が必要です。")
             else:
-                st.caption("Deep Agentsを実行できます。完了まで数分かかることがあります。")
+                st.caption("Python 3.10でも実行できます。検索計画、URL候補収集、URL選択、保存をLangGraphで順に実行します。")
             deep_query = st.text_input("収集したいレシピ", placeholder="tonjiru miso soup")
             deep_max_pages = st.slider("最大保存ページ数", min_value=1, max_value=5, value=3)
             if st.button("Deep Agentで収集", use_container_width=True, disabled=deep_agent_unavailable):
                 if not deep_query:
                     st.warning("収集したいレシピ名やテーマを入力してください。")
                 else:
-                    with st.spinner("Deep Agentが関連ページを探して保存しています。時間がかかります..."):
+                    with st.spinner("LangGraph Deep Agentが関連ページを探して保存しています。時間がかかります..."):
                         try:
-                            saved_pages = run_deep_agent_recipe_collection(deep_query, max_pages=deep_max_pages)
+                            result = run_deep_agent_recipe_collection_with_details(
+                                deep_query,
+                                max_pages=deep_max_pages,
+                            )
+                            # Deep Agentが保存したページもRAGの新規材料なので、cacheを消して再構築予約します。
                             load_chatbot.clear()
                             st.session_state.rebuild_index_next = True
-                            st.success(f"{len(saved_pages)}件保存しました。")
-                            for saved_page in saved_pages:
+                            st.success(f"{len(result.saved_pages)}件保存しました。")
+                            st.caption(result.notes)
+                            with st.expander("Deep Agentの実行内容"):
+                                # デバッグしやすいよう、Agentが考えた検索語と選んだURLをUIに出します。
+                                st.write("Search queries")
+                                st.json(result.search_queries)
+                                st.write("Selected URLs")
+                                st.json(result.selected_urls)
+                            for saved_page in result.saved_pages:
                                 st.caption(f"{saved_page.path.name} - {saved_page.url}")
                         except Exception as exc:
                             log_error(
-                                "Sidebar Deep Agent collection",
+                                "Sidebar LangGraph Deep Agent collection",
                                 exc,
                                 details=f"query={deep_query}, max_pages={deep_max_pages}",
                             )
-                            st.error("Deep Agent収集に失敗しました。設定やネットワーク状態を確認してください。")
+                            st.error("LangGraph Deep Agent収集に失敗しました。設定やネットワーク状態を確認してください。")
                             st.code(str(exc))
 
     return force_rebuild, mode
 
 
 def ensure_chat_history() -> None:
+    # RAG Chat用の会話履歴をStreamlit session_stateに初期化します。
     if "messages" not in st.session_state:
         st.session_state.messages = [
             {
@@ -209,18 +245,32 @@ def ensure_chat_history() -> None:
         ]
 
 
+def ensure_gemini_chat_history() -> None:
+    # Gemini単体テスト用の履歴です。RAGチャットの履歴とは分けて管理します。
+    if "gemini_messages" not in st.session_state:
+        st.session_state.gemini_messages = [
+            {
+                "role": "assistant",
+                "content": "こんにちは。RAGを使わず、Geminiだけで回答します。",
+            }
+        ]
+
+
 def render_chat(force_rebuild: bool) -> None:
+    # RAG Chatページです。保存済みレシピ文書を検索してから回答します。
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
     if question := st.chat_input("例: 豚汁の材料と作り方、普通の味噌汁との違いを教えて"):
+        # サイドバーの手動再構築、または新規ページ保存後の自動再構築フラグを反映します。
         should_rebuild = force_rebuild or st.session_state.get("rebuild_index_next", False)
         if not recipe_knowledge_ready(should_rebuild):
             show_missing_recipe_data_message()
             st.stop()
         try:
             chatbot = load_chatbot(should_rebuild)
+            # chatbotの読み込みに成功したら、再構築予約は消します。
             st.session_state.rebuild_index_next = False
         except RuntimeError as exc:
             show_recipe_source_error(exc)
@@ -232,6 +282,7 @@ def render_chat(force_rebuild: bool) -> None:
         with st.chat_message("assistant"):
             try:
                 with st.spinner("レシピページを検索して回答を作成中..."):
+                    # ここでretriever検索、LLM回答生成、long-term memory保存が実行されます。
                     response = chatbot.answer(question)
             except Exception as exc:
                 log_error(
@@ -245,6 +296,7 @@ def render_chat(force_rebuild: bool) -> None:
                 st.stop()
             st.markdown(response.answer)
             if response.sources:
+                # RAGで参照されたsourceをchip風に表示します。
                 st.caption("Sources")
                 st.markdown(
                     " ".join(f'<span class="source-chip">{url}</span>' for url in response.sources),
@@ -253,7 +305,38 @@ def render_chat(force_rebuild: bool) -> None:
         st.session_state.messages.append({"role": "assistant", "content": response.answer})
 
 
+def render_gemini_chat() -> None:
+    # Gemini単体テストページです。RAG、DB、mem0を通さずGemini APIだけを呼びます。
+    from app.gemini_chatbot import ask_gemini
+
+    st.subheader("Gemini-only Chat")
+    st.caption("RAG、DB、long-term memoryを使わず、Gemini APIだけをテストします。")
+
+    for message in st.session_state.gemini_messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+    if question := st.chat_input("例: Geminiだけで、だし巻き卵の作り方を説明して"):
+        st.session_state.gemini_messages.append({"role": "user", "content": question})
+        with st.chat_message("user"):
+            st.markdown(question)
+        with st.chat_message("assistant"):
+            try:
+                with st.spinner("Geminiに直接問い合わせ中..."):
+                    # ask_geminiはretrieverを使わないので、Gemini API疎通確認に向いています。
+                    answer = ask_gemini(question)
+            except Exception as exc:
+                log_error("Gemini-only chat generation", exc, details=f"question={question}")
+                error_message = "Gemini単体チャットの回答生成中にエラーが発生しました。"
+                show_generation_error(exc, error_message)
+                st.session_state.gemini_messages.append({"role": "assistant", "content": error_message})
+                st.stop()
+            st.markdown(answer)
+        st.session_state.gemini_messages.append({"role": "assistant", "content": answer})
+
+
 def render_json_mode(force_rebuild: bool) -> None:
+    # RAG検索結果を使って構造化JSONを作り、PostgreSQLへ保存するページです。
     from app.json_output import generate_recipe_json
 
     st.subheader("Structured recipe JSON")
@@ -270,6 +353,7 @@ def render_json_mode(force_rebuild: bool) -> None:
                     show_missing_recipe_data_message()
                     st.stop()
                 if should_rebuild:
+                    # 新しいローカル文書を反映するため、cache済みchatbotを破棄します。
                     load_chatbot.clear()
                 result = generate_recipe_json(question, save_to_db=True, force_rebuild_index=should_rebuild)
                 st.session_state.rebuild_index_next = False
@@ -285,7 +369,52 @@ def render_json_mode(force_rebuild: bool) -> None:
         st.json(result)
 
 
+def render_crawl4ai_check() -> None:
+    # crawl4aiの検索クエリ生成、URL発見、LLM抽出、処理時間を確認するページです。
+    from app.crawl4ai_performance import run_crawl4ai_performance_check
+
+    st.subheader("Crawl4AI performance check")
+    st.caption("URLを直接指定せず、ユーザー要望から検索クエリを作成して、候補URLを選び、crawl4aiでLLM抽出します。")
+    user_request = st.text_area(
+        "欲しい情報",
+        "最新のGemini APIで使える主要モデルと特徴を知りたい",
+        height=100,
+    )
+    max_results = st.slider("検索候補URL数", min_value=1, max_value=8, value=5)
+    if st.button("Crawl4AI性能チェックを実行", type="primary"):
+        with st.spinner("検索クエリ生成、URL探索、crawl4ai LLM抽出を実行中..."):
+            result = run_crawl4ai_performance_check(user_request, max_results=max_results)
+        if not result.success:
+            log_error("Crawl4AI performance check", RuntimeError(result.error or "unknown error"))
+            st.error("Crawl4AI性能チェックに失敗しました。")
+            st.code(result.error or "unknown error")
+            if result.timings:
+                st.json(result.timings)
+            return
+
+        st.success("Crawl4AI性能チェックが完了しました。")
+        col_a, col_b, col_c = st.columns(3)
+        col_a.metric("Total sec", f"{result.timings.get('total_sec', 0):.2f}")
+        col_b.metric("Markdown chars", result.markdown_chars)
+        col_c.metric("HTML chars", result.cleaned_html_chars)
+
+        st.write("Generated search query")
+        st.code(result.search_query)
+        st.write("Selected URL")
+        st.code(result.selected_url)
+
+        with st.expander("Candidate URLs"):
+            st.json(result.candidate_urls)
+        with st.expander("Attempted URLs"):
+            st.json(result.attempted_urls)
+        with st.expander("Timing details", expanded=True):
+            st.json({key: round(value, 3) for key, value in result.timings.items()})
+        st.write("Extracted content")
+        st.code(result.extracted_content, language="json")
+
+
 def render_dataframe_mode() -> None:
+    # PostgreSQLに保存したJSON生成結果をpandas DataFrameとして表示するページです。
     from app.view_db_dataframe import recipes_dataframe
 
     st.subheader("PostgreSQL contents")
@@ -298,13 +427,20 @@ def render_dataframe_mode() -> None:
 
 
 def main() -> None:
+    # Streamlitアプリ全体の入口です。sidebarで選んだmodeに応じて表示ページを切り替えます。
     apply_styles()
     force_rebuild, mode = render_sidebar()
     ensure_chat_history()
+    ensure_gemini_chat_history()
     st.title("Recipe Inference RAG Chatbot")
 
-    if mode == "Chat":
+    # サイドバーのradioで選ばれたモードごとに、描画関数を切り替えます。
+    if mode == "RAG Chat":
         render_chat(force_rebuild)
+    elif mode == "Gemini Chat":
+        render_gemini_chat()
+    elif mode == "Crawl4AI Check":
+        render_crawl4ai_check()
     elif mode == "JSON + PostgreSQL":
         render_json_mode(force_rebuild)
     else:
@@ -314,6 +450,7 @@ def main() -> None:
 try:
     main()
 except Exception as exc:
+    # 最後の安全網です。個別のtry/exceptで拾えなかったUIエラーをログに残します。
     log_error("Unhandled Streamlit UI error", exc)
     st.error("予期しないエラーが発生しました。開発者向けログに記録しました。")
     with st.expander("エラー詳細"):

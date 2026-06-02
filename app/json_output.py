@@ -12,6 +12,8 @@ from app.rag_chatbot import RecipeRAGChatbot, format_docs
 
 
 class RecipeProposal(BaseModel):
+    # Pydanticモデルで「LLMに返してほしいJSONの形」を明示します。
+    # PydanticOutputParserはこの形に合うようにLLM出力を検証します。
     recipe_name: str = Field(description="Recipe name")
     health_focus_explanation: str = Field(
         description="How the recipe is adapted to the user's health goals or preferences"
@@ -21,6 +23,8 @@ class RecipeProposal(BaseModel):
 
 
 DEFAULT_USER_PROFILE = {
+    # UIからユーザープロファイルが渡されない場合のサンプル設定です。
+    # 健康状態や好みをJSON生成に反映させます。
     "health_status": "コレステロール値が少し高め",
     "preferences": ["和食が好き", "甘さ控えめを好む"],
     "focus": ["筋トレのための高タンパク", "ダイエットのための低糖質"],
@@ -33,11 +37,14 @@ def generate_recipe_json(
     save_to_db: bool = True,
     force_rebuild_index: bool = False,
 ) -> dict[str, Any]:
+    # JSON生成でも通常チャットと同じRAG検索器を使います。
+    # これにより、保存済みレシピ文書を根拠にした構造化出力になります。
     chatbot = RecipeRAGChatbot(force_rebuild_index=force_rebuild_index)
     docs = chatbot.retriever.invoke(question)
     context = format_docs(docs)
     parser = PydanticOutputParser(pydantic_object=RecipeProposal)
     profile = user_profile or DEFAULT_USER_PROFILE
+    # format_instructionsには、Pydanticモデルに合わせたJSON形式の指示が入ります。
     prompt = ChatPromptTemplate.from_messages(
         [
             (
@@ -61,6 +68,7 @@ Retrieved context:
         stop_after_attempt=3,
         wait_exponential_jitter=True,
     )
+    # LLMの回答はparserを通るため、ここでRecipeProposalとして扱える形になります。
     proposal = chain.invoke(
         {
             "question": question,
@@ -70,9 +78,11 @@ Retrieved context:
         }
     )
     result = proposal.model_dump()
+    # 回答の根拠として使った文書のsourceを保存・表示できるようにします。
     source_urls = sorted({doc.metadata.get("source", "") for doc in docs if doc.metadata.get("source")})
     result["source_urls"] = source_urls
     if save_to_db:
+        # Streamlit UIでは生成したJSONをDBに残し、後でDataFrame表示できます。
         result["database_id"] = save_recipe_output(result, question=question, source_urls=source_urls)
     return result
 

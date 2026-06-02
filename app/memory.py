@@ -10,18 +10,23 @@ class RecipeLongTermMemory:
     """Small mem0 wrapper used by the LangChain RAG prompt."""
 
     def __init__(self, enabled: bool | None = None) -> None:
+        # テストなどで明示的にenabledを渡せます。通常は .env / config の値を使います。
         self.enabled = config.MEM0_ENABLED if enabled is None else enabled
 
     @cached_property
     def client(self):
+        # cached_propertyにより、mem0クライアントは初回アクセス時だけ作られます。
+        # 起動時に重い初期化をしないための遅延初期化です。
         if not self.enabled:
             return None
         if not config.GOOGLE_API_KEY:
+            # mem0の要約や抽出にGeminiを使うため、APIキーがない場合は無効扱いにします。
             return None
 
         from mem0 import Memory
         from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
 
+        # qdrantや履歴DBの保存先を先に作っておくと、初回実行時のFileNotFoundを防げます。
         config.MEM0_DIR.mkdir(parents=True, exist_ok=True)
         config.MEM0_QDRANT_PATH.mkdir(parents=True, exist_ok=True)
         config.MEM0_HISTORY_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -30,6 +35,8 @@ class RecipeLongTermMemory:
             model_name=config.FASTEMBED_MODEL,
             cache_dir=str(config.FASTEMBED_CACHE_DIR),
         )
+        # mem0はLLM・embedding・vector storeをまとめて設定します。
+        # このアプリでは会話の好みをローカルQdrantに保存します。
         memory_config: dict[str, Any] = {
             "llm": {
                 "provider": "gemini",
@@ -64,12 +71,14 @@ class RecipeLongTermMemory:
         if memory is None:
             return ""
         try:
+            # 質問に関連する過去の好みや制約だけをプロンプトに渡します。
             results = memory.search(
                 query=query,
                 filters={"user_id": user_id or config.MEM0_USER_ID},
                 top_k=top_k,
             )
         except Exception:
+            # メモリ検索に失敗しても、RAG本体の回答は続けられるようにします。
             return ""
 
         items = results.get("results", results) if isinstance(results, dict) else results
@@ -87,6 +96,7 @@ class RecipeLongTermMemory:
         memory = self.client
         if memory is None:
             return
+        # mem0は会話形式のmessagesから、今後役立つ好みや制約を抽出します。
         messages = [
             {"role": "user", "content": question},
             {"role": "assistant", "content": answer},
@@ -98,4 +108,5 @@ class RecipeLongTermMemory:
                 metadata={"app": "recipe_chatbot"},
             )
         except Exception:
+            # 保存失敗でUIを止めないため、メモリ機能の例外は握りつぶします。
             return

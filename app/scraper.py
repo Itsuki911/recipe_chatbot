@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import re
-import sys
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
@@ -15,17 +16,18 @@ from app.rag_chatbot import _headers
 try:
     from app import config as app_config
 except ImportError:
+    # config importが壊れていても、最低限のfallback値で動くようにします。
     app_config = None
 
+# RAG用に保存するレシピページの取得先と保存先です。
 BASE_DIR = Path(__file__).resolve().parent.parent
 JOC_START_URL = getattr(app_config, "JOC_START_URL", "https://www.justonecookbook.com/")
 LOCAL_RECIPE_DIR = getattr(app_config, "LOCAL_RECIPE_DIR", BASE_DIR / "data" / "joc_pages")
-GOOGLE_API_KEY = getattr(app_config, "GOOGLE_API_KEY", None)
-GEMINI_MODEL = getattr(app_config, "GEMINI_MODEL", "gemini-2.5-flash")
 
 
 @dataclass
 class SavedPage:
+    # UIへ「どのURLをどのファイルに保存したか」を返すための小さなデータ入れ物です。
     url: str
     path: Path
     title: str
@@ -33,6 +35,7 @@ class SavedPage:
 
 
 def _safe_slug(value: str) -> str:
+    # URLをファイル名に使える安全な文字列へ変換します。
     parsed = urlparse(value)
     candidate = parsed.path.strip("/").split("/")[-1] or parsed.netloc or "recipe-page"
     candidate = re.sub(r"[^a-zA-Z0-9_-]+", "-", candidate).strip("-").lower()
@@ -40,6 +43,7 @@ def _safe_slug(value: str) -> str:
 
 
 def _extract_recipe_text(html: str) -> tuple[str, str]:
+    # HTMLからタイトルと本文を取り出します。CSS selectorはサイト構造に合わせています。
     soup = bs4.BeautifulSoup(html, "html.parser")
     title_node = soup.find(class_="entry-title") or soup.find("h1") or soup.find("title")
     title = title_node.get_text(" ", strip=True) if title_node else "Untitled recipe"
@@ -48,27 +52,91 @@ def _extract_recipe_text(html: str) -> tuple[str, str]:
     return title, text
 
 
-def fetch_recipe_page(url: str, timeout: int = 30) -> tuple[str, str, str]:
-    response = requests.get(url, headers=_headers(), timeout=timeout)
-    response.raise_for_status()
-    title, text = _extract_recipe_text(response.text)
+def _run_async(coro):
+    # Streamlitなど、既にevent loopがある環境でもasync関数を同期的に呼べるようにします。
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+
+    result_holder: list[object] = []
+    error_holder: list[BaseException] = []
+
+    def runner() -> None:
+        try:
+            result_holder.append(asyncio.run(coro))
+        except BaseException as exc:
+            error_holder.append(exc)
+
+    thread = threading.Thread(target=runner)
+    thread.start()
+    thread.join()
+    if error_holder:
+        raise error_holder[0]
+    return result_holder[0]
+
+
+def _title_from_markdown(markdown: str, url: str) -> str:
+    # crawl4aiはMarkdownを返すため、最初の見出しをタイトルとして使います。
+    for line in markdown.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("#"):
+            return stripped.lstrip("#").strip() or "Untitled recipe"
+    return _safe_slug(url).replace("-", " ").title()
+
+
+async def crawl_recipe_page(url: str) -> tuple[str, str, str]:
+    # crawl4ai公式例に沿って、AsyncWebCrawlerでURLからLLM向けMarkdownを抽出します。
+    try:
+        from crawl4ai import AsyncWebCrawler
+        from crawl4ai.async_configs import BrowserConfig, CrawlerRunConfig
+    except ImportError as exc:
+        raise RuntimeError("Install crawl4ai to collect recipe pages with the Deep Agent.") from exc
+
+    browser_config = BrowserConfig(headless=True)
+    run_config = CrawlerRunConfig(
+        css_selector=".entry-title, .entry-content, .wprm-recipe-container",
+    )
+    async with AsyncWebCrawler(config=browser_config) as crawler:
+        result = await crawler.arun(url=url, config=run_config)
+
+    if not getattr(result, "success", True):
+        raise RuntimeError(getattr(result, "error_message", "crawl4ai failed to crawl the page."))
+
+    markdown = str(getattr(result, "markdown", "") or "").strip()
+    cleaned_html = str(getattr(result, "cleaned_html", "") or "").strip()
+    title = _title_from_markdown(markdown, url)
+    if cleaned_html:
+        html_title, _ = _extract_recipe_text(cleaned_html)
+        if html_title and html_title != "Untitled recipe":
+            title = html_title
+
+    text = markdown or re.sub(r"\n{3,}", "\n\n", bs4.BeautifulSoup(cleaned_html, "html.parser").get_text("\n", strip=True))
+    text = text.strip()
     if len(text) < 500:
         raise ValueError(f"Recipe text is too short to index safely ({len(text)} chars).")
-    return response.text, title, text
+    return cleaned_html or markdown, title, text
+
+
+def fetch_recipe_page(url: str, timeout: int = 30) -> tuple[str, str, str]:
+    # timeoutは後方互換のために残しています。実際の取得はcrawl4aiが管理します。
+    return _run_async(crawl_recipe_page(url))
 
 
 def save_recipe_page_from_url(url: str, output_dir: Path = LOCAL_RECIPE_DIR) -> SavedPage:
+    # RAG index再構築時に使えるよう、crawl4aiの抽出Markdownとテキストを保存します。
     output_dir.mkdir(parents=True, exist_ok=True)
-    html, title, text = fetch_recipe_page(url)
+    extracted_content, title, text = fetch_recipe_page(url)
     slug = _safe_slug(url)
-    html_path = output_dir / f"{slug}.html"
+    markdown_path = output_dir / f"{slug}.md"
     text_path = output_dir / f"{slug}.txt"
-    html_path.write_text(html, encoding="utf-8")
+    markdown_path.write_text(f"# {title}\n\nSource: {url}\n\n{extracted_content}\n", encoding="utf-8")
     text_path.write_text(f"{title}\n\nSource: {url}\n\n{text}\n", encoding="utf-8")
     return SavedPage(url=url, path=text_path, title=title, text_chars=len(text))
 
 
 def discover_recipe_links_from_search(query: str, max_results: int = 5) -> list[str]:
+    # Just One Cookbook内検索を使い、ユーザーのキーワードに近いページURLを集めます。
     search_url = f"{JOC_START_URL.rstrip('/')}/?s={quote_plus(query)}"
     response = requests.get(search_url, headers=_headers(), timeout=30)
     response.raise_for_status()
@@ -76,6 +144,7 @@ def discover_recipe_links_from_search(query: str, max_results: int = 5) -> list[
     links: list[str] = []
     seen: set[str] = set()
     for anchor in soup.find_all("a", href=True):
+        # 検索結果ページ内のリンクから、同じサイト内のURLだけを候補にします。
         href = urljoin(search_url, anchor["href"]).split("#")[0]
         parsed = urlparse(href)
         if parsed.netloc != urlparse(JOC_START_URL).netloc:
@@ -90,6 +159,7 @@ def discover_recipe_links_from_search(query: str, max_results: int = 5) -> list[
 
 
 def save_many_recipe_pages(urls: Iterable[str], max_pages: int = 5) -> list[SavedPage]:
+    # 複数URLを順に保存します。失敗したURLがあっても、他のURL保存は続けます。
     saved: list[SavedPage] = []
     errors: list[str] = []
     for url in list(urls)[:max_pages]:
@@ -103,74 +173,8 @@ def save_many_recipe_pages(urls: Iterable[str], max_pages: int = 5) -> list[Save
 
 
 def run_deep_agent_recipe_collection(query: str, max_pages: int = 3) -> list[SavedPage]:
-    """Use LangChain Deep Agents when available, then save the selected recipe pages locally."""
-    if sys.version_info < (3, 11):
-        raise RuntimeError(
-            "LangChain Deep Agents requires Python 3.11 or newer. "
-            f"Current Python is {sys.version_info.major}.{sys.version_info.minor}. "
-            "Use the URL保存 feature on Python 3.10, or create a Python 3.11 environment for Deep Agent collection."
-        )
-    if not GOOGLE_API_KEY:
-        raise RuntimeError("Deep Agent collection requires GOOGLE_API_KEY in .env.")
+    """Collect recipe pages with the LangChain/LangGraph Deep Agent."""
+    # 後方互換用の薄いwrapperです。古いdeepagentsパッケージには依存しません。
+    from app.deep_agent import run_deep_agent_recipe_collection as run_langgraph_deep_agent
 
-    try:
-        from deepagents import create_deep_agent
-        from langchain_google_genai import ChatGoogleGenerativeAI
-    except ImportError as exc:
-        raise RuntimeError("Install deepagents and langchain-google-genai to use Deep Agent collection.") from exc
-
-    found_urls: list[str] = []
-
-    def search_just_one_cookbook(search_query: str, limit: int = max_pages) -> list[str]:
-        """Search Just One Cookbook for candidate recipe URLs."""
-        urls = discover_recipe_links_from_search(search_query, max_results=limit)
-        found_urls.extend(url for url in urls if url not in found_urls)
-        return urls
-
-    def save_just_one_cookbook_url(url: str) -> str:
-        """Save a Just One Cookbook recipe URL into the local RAG data folder."""
-        saved = save_recipe_page_from_url(url)
-        if saved.url not in found_urls:
-            found_urls.append(saved.url)
-        return f"Saved {saved.title} to {saved.path}"
-
-    model = ChatGoogleGenerativeAI(model=GEMINI_MODEL, temperature=0.0, google_api_key=GOOGLE_API_KEY)
-    agent = create_deep_agent(
-        model=model,
-        tools=[search_just_one_cookbook, save_just_one_cookbook_url],
-        system_prompt=(
-            "You collect Japanese recipe pages for a local RAG chatbot. "
-            "Search Just One Cookbook for the user's target recipe, choose the most relevant URLs, "
-            "and save up to the requested number of pages. Do not invent URLs."
-        ),
-    )
-    agent.invoke(
-        {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": (
-                        f"Find and save up to {max_pages} Just One Cookbook pages relevant to: {query}. "
-                        "Use the provided tools and report what you saved."
-                    ),
-                }
-            ]
-        },
-        config={"configurable": {"thread_id": f"recipe-collection-{_safe_slug(query)}"}},
-    )
-
-    saved_paths = {path.stem for path in LOCAL_RECIPE_DIR.glob("*.txt")}
-    saved_urls = [url for url in found_urls if _safe_slug(url) in saved_paths]
-    if saved_urls:
-        return [
-            SavedPage(
-                url=url,
-                path=LOCAL_RECIPE_DIR / f"{_safe_slug(url)}.txt",
-                title=_safe_slug(url),
-                text_chars=(LOCAL_RECIPE_DIR / f"{_safe_slug(url)}.txt").stat().st_size,
-            )
-            for url in saved_urls[:max_pages]
-        ]
-
-    fallback_urls = discover_recipe_links_from_search(query, max_results=max_pages)
-    return save_many_recipe_pages(fallback_urls, max_pages=max_pages)
+    return run_langgraph_deep_agent(query=query, max_pages=max_pages)

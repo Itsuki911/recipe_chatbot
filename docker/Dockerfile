@@ -17,6 +17,8 @@ COPY requirements.txt docker/requirements-docker.txt ./
 RUN python -m pip install --upgrade pip \
     && python -m pip install -r "${REQUIREMENTS_FILE}"
 
+RUN python -m playwright install --with-deps chromium
+
 COPY . .
 
 EXPOSE 8501
