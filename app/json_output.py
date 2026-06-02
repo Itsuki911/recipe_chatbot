@@ -31,8 +31,9 @@ def generate_recipe_json(
     question: str,
     user_profile: dict[str, Any] | None = None,
     save_to_db: bool = True,
+    force_rebuild_index: bool = False,
 ) -> dict[str, Any]:
-    chatbot = RecipeRAGChatbot()
+    chatbot = RecipeRAGChatbot(force_rebuild_index=force_rebuild_index)
     docs = chatbot.retriever.invoke(question)
     context = format_docs(docs)
     parser = PydanticOutputParser(pydantic_object=RecipeProposal)
@@ -56,7 +57,10 @@ Retrieved context:
             ("human", "{question}"),
         ]
     )
-    chain = prompt | chatbot.llm | parser
+    chain = (prompt | chatbot.llm | parser).with_retry(
+        stop_after_attempt=3,
+        wait_exponential_jitter=True,
+    )
     proposal = chain.invoke(
         {
             "question": question,

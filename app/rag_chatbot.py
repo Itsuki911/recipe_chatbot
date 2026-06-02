@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from hashlib import sha1
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
@@ -8,28 +9,46 @@ from urllib.parse import urljoin, urlparse
 
 import bs4
 import requests
-from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 from langchain_core.language_models.llms import LLM
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.runnables import RunnablePassthrough
-from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from pydantic import PrivateAttr
-from transformers import AutoModelForCausalLM, AutoModelForImageTextToText, AutoProcessor, AutoTokenizer
 
-from app.config import (
-    EMBEDDING_MODEL,
-    FAISS_INDEX_DIR,
-    HF_MODEL_ID,
-    JOC_MAX_PAGES,
-    JOC_RECIPE_URLS,
-    JOC_START_URL,
-    LOCAL_RECIPE_DIR,
-    OPENAI_API_KEY,
-    OPENAI_MODEL,
+try:
+    from app import config as app_config
+except ImportError:
+    app_config = None
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+DATA_DIR = BASE_DIR / "data"
+EMBEDDING_MODEL = getattr(app_config, "EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5")
+FASTEMBED_MODEL = getattr(app_config, "FASTEMBED_MODEL", EMBEDDING_MODEL)
+FASTEMBED_CACHE_DIR = getattr(app_config, "FASTEMBED_CACHE_DIR", DATA_DIR / "fastembed_cache")
+EMBEDDING_DIMS = getattr(app_config, "EMBEDDING_DIMS", 384)
+TURBOVEC_INDEX_DIR = getattr(app_config, "TURBOVEC_INDEX_DIR", DATA_DIR / "turbovec_index")
+VECTOR_INDEX_DIR = getattr(app_config, "VECTOR_INDEX_DIR", TURBOVEC_INDEX_DIR)
+HF_MODEL_ID = getattr(app_config, "HF_MODEL_ID", "google/gemma-4-E2B-it")
+JOC_MAX_PAGES = getattr(app_config, "JOC_MAX_PAGES", 12)
+JOC_RECIPE_URLS = getattr(
+    app_config,
+    "JOC_RECIPE_URLS",
+    [
+        "https://www.justonecookbook.com/tamagoyaki-japanese-rolled-omelette/",
+        "https://www.justonecookbook.com/tonjiru/",
+        "https://www.justonecookbook.com/miso-soup/",
+        "https://www.justonecookbook.com/dashi/",
+    ],
 )
+JOC_START_URL = getattr(app_config, "JOC_START_URL", "https://www.justonecookbook.com/")
+LOCAL_RECIPE_DIR = getattr(app_config, "LOCAL_RECIPE_DIR", DATA_DIR / "joc_pages")
+GOOGLE_API_KEY = getattr(app_config, "GOOGLE_API_KEY", None)
+GEMINI_MODEL = getattr(app_config, "GEMINI_MODEL", "gemini-2.5-flash")
+RAG_LLM_BACKEND = getattr(app_config, "RAG_LLM_BACKEND", "gemini")
+RAG_EMBEDDING_BACKEND = getattr(app_config, "RAG_EMBEDDING_BACKEND", "fastembed")
+RAG_VECTOR_STORE = getattr(app_config, "RAG_VECTOR_STORE", "turbovec")
+TURBOVEC_BIT_WIDTH = getattr(app_config, "TURBOVEC_BIT_WIDTH", 4)
 
 
 @dataclass
@@ -58,17 +77,54 @@ class LocalHuggingFaceRecipeLLM(LLM):
         if self._model is not None:
             return
         try:
+            from transformers import (
+                AutoModelForCausalLM,
+                AutoModelForImageTextToText,
+                AutoProcessor,
+                AutoTokenizer,
+            )
+        except ImportError as exc:
+            raise RuntimeError(
+                "Local Hugging Face backend is not installed. "
+                "Use RAG_LLM_BACKEND=gemini with GOOGLE_API_KEY, or install the full requirements.txt."
+            ) from exc
+
+        try:
+            import accelerate  # noqa: F401
+        except ImportError as exc:
+            accelerate_error = exc
+            model_load_kwargs = {}
+        else:
+            accelerate_error = None
+            model_load_kwargs = {"device_map": "auto"}
+
+        try:
             self._processor = AutoProcessor.from_pretrained(self.model_id, padding_side="left")
             self._model = AutoModelForImageTextToText.from_pretrained(
                 self.model_id,
-                device_map="auto",
                 attn_implementation="sdpa",
+                **model_load_kwargs,
             )
             self._mode = "image_text"
-        except Exception:
-            self._tokenizer = AutoTokenizer.from_pretrained(self.model_id)
-            self._model = AutoModelForCausalLM.from_pretrained(self.model_id, device_map="auto")
-            self._mode = "causal"
+            return
+        except Exception as image_text_exc:
+            try:
+                self._tokenizer = AutoTokenizer.from_pretrained(self.model_id)
+                self._model = AutoModelForCausalLM.from_pretrained(self.model_id, **model_load_kwargs)
+                self._mode = "causal"
+                return
+            except Exception as causal_exc:
+                accelerate_note = (
+                    " `accelerate` is not installed, so the fallback tried loading without "
+                    '`device_map="auto"`.'
+                    if accelerate_error
+                    else ""
+                )
+                raise RuntimeError(
+                    f"Failed to load local Hugging Face model `{self.model_id}`."
+                    f"{accelerate_note} Set GOOGLE_API_KEY in .env to use Gemini, "
+                    "or use the Docker environment documented in README.md."
+                ) from causal_exc
 
     def _call(self, prompt: str, stop: list[str] | None = None, **kwargs) -> str:
         self._load()
@@ -178,7 +234,15 @@ def load_just_one_cookbook_docs(urls: Iterable[str] | None = None) -> list[Docum
     if docs:
         return docs
 
-    failures: list[str] = []
+    local_files = [
+        str(path)
+        for path in sorted(LOCAL_RECIPE_DIR.glob("*"))
+        if path.is_file() and path.name != ".gitkeep"
+    ] if LOCAL_RECIPE_DIR.exists() else []
+    failures: list[str] = [
+        f"Local recipe docs loaded: 0 from {LOCAL_RECIPE_DIR}",
+        f"Local recipe files found: {len(local_files)}",
+    ]
     for url in urls or discover_recipe_urls():
         try:
             doc = load_web_page(url)
@@ -200,24 +264,65 @@ def load_just_one_cookbook_docs(urls: Iterable[str] | None = None) -> list[Docum
     return docs
 
 
-def get_embeddings() -> HuggingFaceEmbeddings:
+def get_embeddings():
+    if RAG_EMBEDDING_BACKEND in {"fastembed", "auto"}:
+        from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
+
+        return FastEmbedEmbeddings(
+            model_name=FASTEMBED_MODEL,
+            cache_dir=str(FASTEMBED_CACHE_DIR),
+        )
+
+    if RAG_EMBEDDING_BACKEND == "gemini":
+        if not GOOGLE_API_KEY:
+            raise RuntimeError(
+                "Gemini embeddings are selected, but GOOGLE_API_KEY is not set. "
+                "This project defaults to free local FastEmbed embeddings; use RAG_EMBEDDING_BACKEND=fastembed."
+            )
+        from langchain_google_genai import GoogleGenerativeAIEmbeddings
+
+        return GoogleGenerativeAIEmbeddings(model="models/text-embedding-004", google_api_key=GOOGLE_API_KEY)
+
+    try:
+        from langchain_huggingface import HuggingFaceEmbeddings
+    except ImportError as exc:
+        raise RuntimeError(
+            "Hugging Face embeddings are not installed in this environment. "
+            "Docker mode uses free local FastEmbed embeddings; use RAG_EMBEDDING_BACKEND=fastembed."
+        ) from exc
+
     return HuggingFaceEmbeddings(
         model_name=EMBEDDING_MODEL,
         encode_kwargs={"normalize_embeddings": True},
     )
 
 
+def _stable_doc_id(doc: Document, index: int) -> str:
+    source = doc.metadata.get("source", "")
+    start = doc.metadata.get("start_index", index)
+    digest = sha1(f"{source}:{start}:{doc.page_content[:120]}".encode("utf-8")).hexdigest()
+    return digest
+
+
+def _with_stable_ids(docs: list[Document]) -> list[Document]:
+    return [
+        Document(id=_stable_doc_id(doc, index), page_content=doc.page_content, metadata=doc.metadata)
+        for index, doc in enumerate(docs)
+    ]
+
+
 def build_or_load_vector_store(
-    index_dir: Path = FAISS_INDEX_DIR,
+    index_dir: Path = VECTOR_INDEX_DIR,
     force_rebuild: bool = False,
-) -> FAISS:
+):
     embeddings = get_embeddings()
+    if RAG_VECTOR_STORE != "turbovec":
+        raise RuntimeError("This project is configured to use TurboVec. Set RAG_VECTOR_STORE=turbovec.")
+
     if index_dir.exists() and not force_rebuild:
-        return FAISS.load_local(
-            str(index_dir),
-            embeddings,
-            allow_dangerous_deserialization=True,
-        )
+        from turbovec.langchain import TurboQuantVectorStore
+
+        return TurboQuantVectorStore.load(str(index_dir), embedding=embeddings)
 
     docs = load_just_one_cookbook_docs()
     splitter = RecursiveCharacterTextSplitter(
@@ -225,18 +330,26 @@ def build_or_load_vector_store(
         chunk_overlap=200,
         add_start_index=True,
     )
-    splits = splitter.split_documents(docs)
-    vector_store = FAISS.from_documents(splits, embeddings)
+    splits = _with_stable_ids(splitter.split_documents(docs))
+    from turbovec.langchain import TurboQuantVectorStore
+
+    vector_store = TurboQuantVectorStore(embeddings, bit_width=TURBOVEC_BIT_WIDTH)
+    vector_store.add_documents(splits)
     index_dir.mkdir(parents=True, exist_ok=True)
-    vector_store.save_local(str(index_dir))
+    vector_store.dump(str(index_dir))
     return vector_store
 
 
 def build_llm():
-    if OPENAI_API_KEY:
-        from langchain_openai import ChatOpenAI
+    if RAG_LLM_BACKEND in {"gemini", "auto"}:
+        if not GOOGLE_API_KEY:
+            raise RuntimeError(
+                "Gemini LLM backend is selected, but GOOGLE_API_KEY is not set. "
+                "Add GOOGLE_API_KEY to .env. The key must stay out of git."
+            )
+        from langchain_google_genai import ChatGoogleGenerativeAI
 
-        return ChatOpenAI(model=OPENAI_MODEL, temperature=0.1)
+        return ChatGoogleGenerativeAI(model=GEMINI_MODEL, temperature=0.1, google_api_key=GOOGLE_API_KEY)
 
     return LocalHuggingFaceRecipeLLM(model_id=HF_MODEL_ID)
 
@@ -252,6 +365,9 @@ class RecipeRAGChatbot:
         self.vector_store = build_or_load_vector_store(force_rebuild=force_rebuild_index)
         self.retriever = self.vector_store.as_retriever(search_kwargs={"k": 4})
         self.llm = build_llm()
+        from app.memory import RecipeLongTermMemory
+
+        self.memory = RecipeLongTermMemory()
         prompt = ChatPromptTemplate.from_messages(
             [
                 (
@@ -266,6 +382,10 @@ Rules:
 - Explain relevant differences from similar Japanese dishes when useful.
 - Mention source URLs briefly at the end.
 - Answer in the same language as the user's question unless they ask otherwise.
+- Use the user's long-term memory only for preferences, dietary constraints, and continuity.
+
+Long-term user memory:
+{memory}
 
 Context:
 {context}""",
@@ -273,18 +393,21 @@ Context:
                 ("human", "{question}"),
             ]
         )
-        self.chain = (
-            {
-                "context": self.retriever | format_docs,
-                "question": RunnablePassthrough(),
-            }
-            | prompt
-            | self.llm
-            | StrOutputParser()
+        self.chain = (prompt | self.llm | StrOutputParser()).with_retry(
+            stop_after_attempt=3,
+            wait_exponential_jitter=True,
         )
 
-    def answer(self, question: str) -> RAGResponse:
+    def answer(self, question: str, user_id: str | None = None) -> RAGResponse:
         docs = self.retriever.invoke(question)
-        answer = self.chain.invoke(question)
+        memory = self.memory.search(question, user_id=user_id)
+        answer = self.chain.invoke(
+            {
+                "context": format_docs(docs),
+                "memory": memory or "No relevant user memory found.",
+                "question": question,
+            }
+        )
+        self.memory.add_interaction(question, answer, user_id=user_id)
         sources = sorted({doc.metadata.get("source", "") for doc in docs if doc.metadata.get("source")})
         return RAGResponse(answer=answer, sources=sources)
