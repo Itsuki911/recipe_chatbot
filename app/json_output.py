@@ -7,7 +7,9 @@ from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 
+from app import config
 from app.database import save_recipe_output
+from app.llm import strip_hidden_reasoning
 from app.rag_chatbot import RecipeRAGChatbot, format_docs
 
 
@@ -39,7 +41,10 @@ def generate_recipe_json(
 ) -> dict[str, Any]:
     # JSON生成でも通常チャットと同じRAG検索器を使います。
     # これにより、保存済みレシピ文書を根拠にした構造化出力になります。
-    chatbot = RecipeRAGChatbot(force_rebuild_index=force_rebuild_index)
+    chatbot = RecipeRAGChatbot(
+        force_rebuild_index=force_rebuild_index,
+        llm_backend=config.STRUCTURED_LLM_BACKEND,
+    )
     docs = chatbot.retriever.invoke(question)
     context = format_docs(docs)
     parser = PydanticOutputParser(pydantic_object=RecipeProposal)
@@ -50,7 +55,7 @@ def generate_recipe_json(
             (
                 "system",
                 """You are a Japanese recipe personalization assistant.
-Use the retrieved Just One Cookbook context and the user profile to produce valid JSON only.
+Use the retrieved recipe reference context and the user profile to produce valid JSON only.
 Do not invent details that conflict with the context.
 
 User profile:
@@ -64,12 +69,12 @@ Retrieved context:
             ("human", "{question}"),
         ]
     )
-    chain = (prompt | chatbot.llm | parser).with_retry(
+    chain = (prompt | chatbot.llm).with_retry(
         stop_after_attempt=3,
         wait_exponential_jitter=True,
     )
-    # LLMの回答はparserを通るため、ここでRecipeProposalとして扱える形になります。
-    proposal = chain.invoke(
+    # Qwenがhidden reasoningを含めても、parserへ渡す前に取り除きます。
+    raw_proposal = chain.invoke(
         {
             "question": question,
             "profile": json.dumps(profile, ensure_ascii=False, indent=2),
@@ -77,6 +82,8 @@ Retrieved context:
             "format_instructions": parser.get_format_instructions(),
         }
     )
+    raw_text = raw_proposal.content if hasattr(raw_proposal, "content") else raw_proposal
+    proposal = parser.parse(strip_hidden_reasoning(str(raw_text)))
     result = proposal.model_dump()
     # 回答の根拠として使った文書のsourceを保存・表示できるようにします。
     source_urls = sorted({doc.metadata.get("source", "") for doc in docs if doc.metadata.get("source")})

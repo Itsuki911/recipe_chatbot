@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import re
-
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
-from app import config
+from app.llm import build_qwen_llm, strip_hidden_reasoning
 from app.rag_chatbot import RAGResponse, build_or_load_vector_store, format_docs
 
 
@@ -14,30 +12,6 @@ DEFAULT_QWEN_SYSTEM_PROMPT = (
     "Do not claim that you used retrieved documents, because this test bot does not use RAG. "
     "Do not include hidden reasoning, chain-of-thought, or <think> blocks."
 )
-
-
-def build_qwen_llm():
-    # OllamaはOpenAI互換APIを提供するため、LangChainのChatOpenAIから呼び出せます。
-    # api_keyはOllama側では無視されますが、ChatOpenAIの必須引数としてダミー値を渡します。
-    try:
-        from langchain_openai import ChatOpenAI
-    except ImportError as exc:
-        raise RuntimeError("Install langchain-openai to use Ollama Qwen RAG Chat.") from exc
-
-    qwen_model = getattr(config, "QWEN_MODEL", "qwen3:4b")
-    qwen_base_url = getattr(config, "QWEN_BASE_URL", "http://localhost:11434/v1")
-    qwen_api_key = getattr(config, "QWEN_API_KEY", "ollama")
-    return ChatOpenAI(
-        model=qwen_model,
-        base_url=qwen_base_url,
-        api_key=qwen_api_key,
-        temperature=0.1,
-    )
-
-
-def _strip_qwen_thinking(text: str) -> str:
-    # Qwen3は環境によって <think>...</think> を返すことがあるため、UIには最終回答だけを出します。
-    return re.sub(r"<think>[\s\S]*?</think>", "", text).strip()
 
 
 def ask_qwen(question: str, system_prompt: str = DEFAULT_QWEN_SYSTEM_PROMPT) -> str:
@@ -51,12 +25,12 @@ def ask_qwen(question: str, system_prompt: str = DEFAULT_QWEN_SYSTEM_PROMPT) -> 
             HumanMessage(content=question),
         ]
     )
-    return _strip_qwen_thinking(str(response.content))
+    return strip_hidden_reasoning(str(response.content))
 
 
 class QwenRAGChatbot:
     def __init__(self, force_rebuild_index: bool = False) -> None:
-        # Gemini版と同じRAGシステム: TurboVec indexを読み込み、関連チャンク上位4件を検索します。
+        # 共通RAGシステム: TurboVec indexを読み込み、関連チャンク上位4件を検索します。
         self.vector_store = build_or_load_vector_store(force_rebuild=force_rebuild_index)
         self.retriever = self.vector_store.as_retriever(search_kwargs={"k": 4})
         self.llm = build_qwen_llm()
@@ -69,7 +43,7 @@ class QwenRAGChatbot:
                 (
                     "system",
                     """You are a recipe inference assistant specializing in Japanese home cooking.
-Use only the retrieved Just One Cookbook context below. If the context is insufficient,
+Use only the retrieved recipe reference context below. If the context is insufficient,
 say that the recipe database does not contain enough information.
 
 Rules:
@@ -105,7 +79,7 @@ Context:
                 "question": question,
             }
         )
-        answer = _strip_qwen_thinking(answer)
+        answer = strip_hidden_reasoning(answer)
         self.memory.add_interaction(question, answer, user_id=user_id)
         sources = sorted({doc.metadata.get("source", "") for doc in docs if doc.metadata.get("source")})
         return RAGResponse(answer=answer, sources=sources)

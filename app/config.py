@@ -17,6 +17,7 @@ ERROR_LOG_PATH = BASE_DIR / "ERROR_LOG.md"
 TURBOVEC_INDEX_DIR = DATA_DIR / "turbovec_index"
 VECTOR_INDEX_DIR = TURBOVEC_INDEX_DIR
 LOCAL_RECIPE_DIR = DATA_DIR / "joc_pages"
+WEB_RECIPE_REFERENCE_DIR = Path(os.getenv("WEB_RECIPE_REFERENCE_DIR", str(DATA_DIR / "web_recipe_reference")))
 MEM0_DIR = DATA_DIR / "mem0"
 
 DATABASE_URL = os.getenv(
@@ -33,15 +34,20 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 QWEN_BASE_URL = os.getenv("QWEN_BASE_URL", "http://localhost:11434/v1")
 QWEN_MODEL = os.getenv("QWEN_MODEL", "qwen3:4b")
 QWEN_API_KEY = os.getenv("QWEN_API_KEY", "ollama")
+QWEN_OLLAMA_BASE_URL = os.getenv("QWEN_OLLAMA_BASE_URL", QWEN_BASE_URL.removesuffix("/v1"))
 
 # RAGの構成は環境変数で切り替えられます。
-# デフォルトは Gemini + FastEmbed + TurboVec です。
+# デフォルトは Qwen + FastEmbed + TurboVec です。Geminiへ戻す場合は各 *_LLM_BACKEND=gemini にします。
+MAIN_LLM_BACKEND = os.getenv("MAIN_LLM_BACKEND", "qwen").lower()
 HF_MODEL_ID = os.getenv("HF_MODEL_ID", "google/gemma-4-E2B-it")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5")
 FASTEMBED_MODEL = os.getenv("FASTEMBED_MODEL", EMBEDDING_MODEL)
 FASTEMBED_CACHE_DIR = Path(os.getenv("FASTEMBED_CACHE_DIR", str(DATA_DIR / "fastembed_cache")))
 EMBEDDING_DIMS = int(os.getenv("EMBEDDING_DIMS", "384"))
-RAG_LLM_BACKEND = os.getenv("RAG_LLM_BACKEND", "gemini").lower()
+RAG_LLM_BACKEND = os.getenv("RAG_LLM_BACKEND", MAIN_LLM_BACKEND).lower()
+DEEP_AGENT_LLM_BACKEND = os.getenv("DEEP_AGENT_LLM_BACKEND", MAIN_LLM_BACKEND).lower()
+STRUCTURED_LLM_BACKEND = os.getenv("STRUCTURED_LLM_BACKEND", MAIN_LLM_BACKEND).lower()
+CRAWL4AI_LLM_PROVIDER = os.getenv("CRAWL4AI_LLM_PROVIDER", f"ollama/{QWEN_MODEL}")
 RAG_EMBEDDING_BACKEND = os.getenv("RAG_EMBEDDING_BACKEND", "fastembed").lower()
 RAG_VECTOR_STORE = os.getenv("RAG_VECTOR_STORE", "turbovec").lower()
 TURBOVEC_BIT_WIDTH = int(os.getenv("TURBOVEC_BIT_WIDTH", "4"))

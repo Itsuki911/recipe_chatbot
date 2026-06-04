@@ -16,6 +16,8 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from pydantic import PrivateAttr
 
+from app.llm import build_chat_llm, strip_hidden_reasoning
+
 try:
     from app import config as app_config
 except ImportError:
@@ -45,9 +47,10 @@ JOC_RECIPE_URLS = getattr(
 )
 JOC_START_URL = getattr(app_config, "JOC_START_URL", "https://www.justonecookbook.com/")
 LOCAL_RECIPE_DIR = getattr(app_config, "LOCAL_RECIPE_DIR", DATA_DIR / "joc_pages")
+WEB_RECIPE_REFERENCE_DIR = getattr(app_config, "WEB_RECIPE_REFERENCE_DIR", DATA_DIR / "web_recipe_reference")
 GOOGLE_API_KEY = getattr(app_config, "GOOGLE_API_KEY", None)
 GEMINI_MODEL = getattr(app_config, "GEMINI_MODEL", "gemini-2.5-flash")
-RAG_LLM_BACKEND = getattr(app_config, "RAG_LLM_BACKEND", "gemini")
+RAG_LLM_BACKEND = getattr(app_config, "RAG_LLM_BACKEND", "qwen")
 RAG_EMBEDDING_BACKEND = getattr(app_config, "RAG_EMBEDDING_BACKEND", "fastembed")
 RAG_VECTOR_STORE = getattr(app_config, "RAG_VECTOR_STORE", "turbovec")
 TURBOVEC_BIT_WIDTH = getattr(app_config, "TURBOVEC_BIT_WIDTH", 4)
@@ -90,7 +93,8 @@ class LocalHuggingFaceRecipeLLM(LLM):
         except ImportError as exc:
             raise RuntimeError(
                 "Local Hugging Face backend is not installed. "
-                "Use RAG_LLM_BACKEND=gemini with GOOGLE_API_KEY, or install the full requirements.txt."
+                "Use RAG_LLM_BACKEND=qwen with Ollama, RAG_LLM_BACKEND=gemini with GOOGLE_API_KEY, "
+                "or install the full requirements.txt."
             ) from exc
 
         try:
@@ -244,24 +248,35 @@ def load_local_recipe_docs(local_dir: Path = LOCAL_RECIPE_DIR) -> list[Document]
         text = re.sub(r"\n{3,}", "\n\n", text).strip()
         if len(text) > 500:
             # 短すぎるファイルはレシピ本文ではない可能性が高いため除外します。
-            docs.append(Document(page_content=text, metadata={"source": f"local:{path.name}"}))
+            docs.append(Document(page_content=text, metadata={"source": f"local:{local_dir.name}/{path.name}"}))
+    return docs
+
+
+def load_reference_recipe_docs() -> list[Document]:
+    docs: list[Document] = []
+    for directory in (LOCAL_RECIPE_DIR, WEB_RECIPE_REFERENCE_DIR):
+        docs.extend(load_local_recipe_docs(directory))
     return docs
 
 
 def load_just_one_cookbook_docs(urls: Iterable[str] | None = None) -> list[Document]:
-    # まずローカル保存済み文書を使い、なければWebから取得します。
-    docs: list[Document] = load_local_recipe_docs()
+    # まずローカル保存済み文書を使います。Deep Agentのweb_recipe_referenceもRAG対象です。
+    docs: list[Document] = load_reference_recipe_docs()
     if docs:
         return docs
 
-    local_files = [
-        str(path)
-        for path in sorted(LOCAL_RECIPE_DIR.glob("*"))
-        if path.is_file() and path.name != ".gitkeep"
-    ] if LOCAL_RECIPE_DIR.exists() else []
+    reference_dirs = (LOCAL_RECIPE_DIR, WEB_RECIPE_REFERENCE_DIR)
+    local_files = []
+    for directory in reference_dirs:
+        if directory.exists():
+            local_files.extend(
+                str(path)
+                for path in sorted(directory.glob("*"))
+                if path.is_file() and path.name != ".gitkeep"
+            )
     failures: list[str] = [
         # 失敗時のエラーメッセージに、調査しやすい情報を残します。
-        f"Local recipe docs loaded: 0 from {LOCAL_RECIPE_DIR}",
+        f"Local recipe docs loaded: 0 from {', '.join(str(path) for path in reference_dirs)}",
         f"Local recipe files found: {len(local_files)}",
     ]
     for url in urls or discover_recipe_urls():
@@ -277,9 +292,10 @@ def load_just_one_cookbook_docs(urls: Iterable[str] | None = None) -> list[Docum
     if not docs:
         detail = "\n".join(failures[:5]) or "No URLs were discovered."
         raise RuntimeError(
-            "No recipe documents could be loaded from Just One Cookbook.\n"
-            "The site may be returning 403 to automated Python requests. "
-            "Save recipe pages as .html/.txt/.md under data/joc_pages, then rebuild the index.\n"
+            "No recipe documents could be loaded from local reference folders or Just One Cookbook.\n"
+            "The source site may be returning 403 to automated Python requests. "
+            "Save recipe pages as .html/.txt/.md under data/joc_pages or data/web_recipe_reference, "
+            "then rebuild the index.\n"
             f"Failures:\n{detail}"
         )
     return docs
@@ -369,17 +385,11 @@ def build_or_load_vector_store(
     return vector_store
 
 
-def build_llm():
-    # 回答生成モデルを選びます。デフォルトはGeminiです。
-    if RAG_LLM_BACKEND in {"gemini", "auto"}:
-        if not GOOGLE_API_KEY:
-            raise RuntimeError(
-                "Gemini LLM backend is selected, but GOOGLE_API_KEY is not set. "
-                "Add GOOGLE_API_KEY to .env. The key must stay out of git."
-            )
-        from langchain_google_genai import ChatGoogleGenerativeAI
-
-        return ChatGoogleGenerativeAI(model=GEMINI_MODEL, temperature=0.1, google_api_key=GOOGLE_API_KEY)
+def build_llm(llm_backend: str | None = None):
+    # 回答生成モデルを選びます。デフォルトはQwenです。Geminiは明示選択時に使えます。
+    selected_backend = (llm_backend or RAG_LLM_BACKEND or "qwen").lower()
+    if selected_backend in {"qwen", "ollama", "gemini", "google"}:
+        return build_chat_llm(selected_backend, temperature=0.1)
 
     return LocalHuggingFaceRecipeLLM(model_id=HF_MODEL_ID)
 
@@ -392,22 +402,22 @@ def format_docs(docs: list[Document]) -> str:
 
 
 class RecipeRAGChatbot:
-    def __init__(self, force_rebuild_index: bool = False) -> None:
+    def __init__(self, force_rebuild_index: bool = False, llm_backend: str | None = None) -> None:
         # RAGの3要素: vector_store(検索DB), retriever(検索器), llm(回答生成モデル)を準備します。
         self.vector_store = build_or_load_vector_store(force_rebuild=force_rebuild_index)
         # k=4なので、質問ごとに関連度の高いチャンクを最大4件取得します。
         self.retriever = self.vector_store.as_retriever(search_kwargs={"k": 4})
-        self.llm = build_llm()
+        self.llm = build_llm(llm_backend=llm_backend)
         from app.memory import RecipeLongTermMemory
 
         self.memory = RecipeLongTermMemory()
-        # system promptで「取得したJust One Cookbook文脈だけを使う」ように強く指定します。
+        # system promptで「取得したレシピ参照文脈だけを使う」ように強く指定します。
         prompt = ChatPromptTemplate.from_messages(
             [
                 (
                     "system",
                     """You are a recipe inference assistant specializing in Japanese home cooking.
-Use only the retrieved Just One Cookbook context below. If the context is insufficient,
+Use only the retrieved recipe reference context below. If the context is insufficient,
 say that the recipe database does not contain enough information.
 
 Rules:
@@ -428,7 +438,7 @@ Context:
             ]
         )
         self.chain = (prompt | self.llm | StrOutputParser()).with_retry(
-            # Geminiなどの一時的な失敗に備えて、最大3回まで再試行します。
+            # LLMやネットワークの一時的な失敗に備えて、最大3回まで再試行します。
             stop_after_attempt=3,
             wait_exponential_jitter=True,
         )
@@ -446,6 +456,7 @@ Context:
                 "question": question,
             }
         )
+        answer = strip_hidden_reasoning(str(answer))
         # 4. 今回のやり取りを長期メモリへ保存します。
         self.memory.add_interaction(question, answer, user_id=user_id)
         # 5. UIで根拠を表示できるようにsource一覧を返します。

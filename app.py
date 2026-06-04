@@ -6,15 +6,25 @@ from pathlib import Path
 import streamlit as st
 
 try:
-    from app.config import GOOGLE_API_KEY, LOCAL_RECIPE_DIR, QWEN_BASE_URL, QWEN_MODEL, VECTOR_INDEX_DIR
+    from app.config import (
+        DEEP_AGENT_LLM_BACKEND,
+        GOOGLE_API_KEY,
+        LOCAL_RECIPE_DIR,
+        QWEN_BASE_URL,
+        QWEN_MODEL,
+        VECTOR_INDEX_DIR,
+        WEB_RECIPE_REFERENCE_DIR,
+    )
 except ImportError:
     # config.pyのimport前に壊れても、Streamlit画面とログ出力を最低限続けるためのfallbackです。
     fallback_data_dir = Path(__file__).resolve().parent / "data"
     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
     QWEN_BASE_URL = os.getenv("QWEN_BASE_URL", "http://localhost:11434/v1")
     QWEN_MODEL = os.getenv("QWEN_MODEL", "qwen3:4b")
+    DEEP_AGENT_LLM_BACKEND = os.getenv("DEEP_AGENT_LLM_BACKEND", os.getenv("MAIN_LLM_BACKEND", "qwen")).lower()
     VECTOR_INDEX_DIR = fallback_data_dir / "turbovec_index"
     LOCAL_RECIPE_DIR = fallback_data_dir / "joc_pages"
+    WEB_RECIPE_REFERENCE_DIR = fallback_data_dir / "web_recipe_reference"
 
 try:
     from app.error_logger import log_error
@@ -37,17 +47,17 @@ st.set_page_config(page_title="Recipe RAG Chatbot", page_icon="🍱", layout="wi
 
 
 @st.cache_resource(show_spinner="Loading recipe knowledge base...")
-def load_chatbot(force_rebuild_index: bool = False):
+def load_chatbot(force_rebuild_index: bool = False, llm_backend: str | None = None):
     # RAG chatbotの初期化はembedding/index読み込みが重いため、Streamlitのresource cacheに載せます。
     # load_chatbot.clear() を呼ぶと、次回アクセス時にindexを再読み込み・再構築できます。
     from app.rag_chatbot import RecipeRAGChatbot
 
-    return RecipeRAGChatbot(force_rebuild_index=force_rebuild_index)
+    return RecipeRAGChatbot(force_rebuild_index=force_rebuild_index, llm_backend=llm_backend)
 
 
 @st.cache_resource(show_spinner="Loading Qwen RAG chatbot...")
 def load_qwen_chatbot(force_rebuild_index: bool = False):
-    # Qwen RAGも同じRAG indexを使いますが、LLMが別なのでGemini版とは別cacheにします。
+    # Qwen専用RAGも同じRAG indexを使いますが、LLM指定が別なので通常RAGとは別cacheにします。
     from app.qwen import QwenRAGChatbot
 
     return QwenRAGChatbot(force_rebuild_index=force_rebuild_index)
@@ -130,13 +140,16 @@ def show_generation_error(exc: Exception, fallback_message: str) -> None:
 
 
 def has_local_recipe_files() -> bool:
-    # data/joc_pages に保存済みのレシピ文書があるか確認します。
-    if not LOCAL_RECIPE_DIR.exists():
-        return False
-    return any(
-        path.is_file() and path.suffix.lower() in {".html", ".htm", ".txt", ".md"}
-        for path in LOCAL_RECIPE_DIR.iterdir()
-    )
+    # data/joc_pages と data/web_recipe_reference に保存済みのレシピ文書があるか確認します。
+    for directory in (LOCAL_RECIPE_DIR, WEB_RECIPE_REFERENCE_DIR):
+        if not directory.exists():
+            continue
+        if any(
+            path.is_file() and path.suffix.lower() in {".html", ".htm", ".txt", ".md"}
+            for path in directory.iterdir()
+        ):
+            return True
+    return False
 
 
 def has_vector_index() -> bool:
@@ -156,8 +169,8 @@ def show_missing_recipe_data_message() -> None:
     # RAGに必要なローカル文書/indexがない時の案内です。
     st.warning("RAGに使えるレシピデータがまだありません。")
     st.info(
-        "左サイドバーの「ページをdataに保存」からJust One CookbookのレシピURLを保存してください。"
-        f"保存先は `{LOCAL_RECIPE_DIR}` です。"
+        "左サイドバーの「ページをdataに保存」または「Deep Agent自動収集」からレシピ参照を保存してください。"
+        f"保存先は `{LOCAL_RECIPE_DIR}` または `{WEB_RECIPE_REFERENCE_DIR}` です。"
     )
 
 
@@ -168,18 +181,19 @@ def render_sidebar() -> tuple[bool, str]:
 
     with st.sidebar:
         st.title("Recipe RAG")
-        st.caption("Just One Cookbookを検索して、和食レシピ推論に特化して回答します。")
+        st.caption("保存済みレシピ参照を検索して、和食レシピ推論に特化して回答します。")
         # このボタンを押した場合、次回RAG実行時に既存indexではなく文書から作り直します。
         force_rebuild = st.button("RAGインデックスを再作成")
         # このradioがメイン画面の「ページ切り替え」として働きます。
         mode = st.radio(
             "モード",
             [
-                "RAG Chat",
                 "Qwen RAG Chat",
+                "Gemini RAG Chat",
                 "Qwen Chat",
                 "Gemini Chat",
                 "Crawl4AI Check",
+                "Adaptive Crawl",
                 "JSON + PostgreSQL",
                 "DB DataFrame",
             ],
@@ -209,20 +223,23 @@ def render_sidebar() -> tuple[bool, str]:
                         st.code(str(exc))
 
         with st.expander("Deep Agent自動収集"):
-            # LangGraph Deep Agentは検索クエリ作成、候補URL収集、URL選択、保存を順番に実行します。
-            st.warning("LangChain/LangGraph Deep Agent収集はLLMと複数回のWeb取得を使うため、数分かかることがあります。")
-            deep_agent_unavailable = not GOOGLE_API_KEY
-            if not GOOGLE_API_KEY:
-                st.caption("LangGraph Deep Agentを使うには `.env` に `GOOGLE_API_KEY` が必要です。")
+            # crawl4ai Agentic CrawlerはLLMで検索計画を立て、Best-first crawlでWeb参照を保存します。
+            st.warning("crawl4ai Agentic CrawlerはLLM、Web検索、複数ページのクロールを使うため、数分かかることがあります。")
+            deep_agent_unavailable = DEEP_AGENT_LLM_BACKEND in {"gemini", "google"} and not GOOGLE_API_KEY
+            if deep_agent_unavailable:
+                st.caption("GeminiでDeep Agentを使うには `.env` に `GOOGLE_API_KEY` が必要です。")
             else:
-                st.caption("Python 3.10でも実行できます。検索計画、URL候補収集、URL選択、保存をLangGraphで順に実行します。")
-            deep_query = st.text_input("収集したいレシピ", placeholder="tonjiru miso soup")
+                st.caption(
+                    f"LLM: `{DEEP_AGENT_LLM_BACKEND}`。"
+                    f"Web検索、seed URL選択、crawl4ai deep crawl、保存を実行します。保存先: `{WEB_RECIPE_REFERENCE_DIR}`"
+                )
+            deep_query = st.text_input("収集したいレシピ/調査テーマ", placeholder="omurice recipe technique and variations")
             deep_max_pages = st.slider("最大保存ページ数", min_value=1, max_value=5, value=3)
             if st.button("Deep Agentで収集", use_container_width=True, disabled=deep_agent_unavailable):
                 if not deep_query:
                     st.warning("収集したいレシピ名やテーマを入力してください。")
                 else:
-                    with st.spinner("LangGraph Deep Agentが関連ページを探して保存しています。時間がかかります..."):
+                    with st.spinner("Agentic CrawlerがWeb上の関連ページを調査して保存しています。時間がかかります..."):
                         try:
                             result = run_deep_agent_recipe_collection_with_details(
                                 deep_query,
@@ -235,7 +252,7 @@ def render_sidebar() -> tuple[bool, str]:
                             st.success(f"{len(result.saved_pages)}件保存しました。")
                             st.caption(result.notes)
                             with st.expander("Deep Agentの実行内容"):
-                                # デバッグしやすいよう、Agentが考えた検索語と選んだURLをUIに出します。
+                                # デバッグしやすいよう、Agentが考えた検索語と選んだseed URLをUIに出します。
                                 st.write("Search queries")
                                 st.json(result.search_queries)
                                 st.write("Selected URLs")
@@ -244,11 +261,11 @@ def render_sidebar() -> tuple[bool, str]:
                                 st.caption(f"{saved_page.path.name} - {saved_page.url}")
                         except Exception as exc:
                             log_error(
-                                "Sidebar LangGraph Deep Agent collection",
+                                "Sidebar crawl4ai Agentic Crawler collection",
                                 exc,
                                 details=f"query={deep_query}, max_pages={deep_max_pages}",
                             )
-                            st.error("LangGraph Deep Agent収集に失敗しました。設定やネットワーク状態を確認してください。")
+                            st.error("Agentic Crawler収集に失敗しました。設定やネットワーク状態を確認してください。")
                             st.code(str(exc))
 
     return force_rebuild, mode
@@ -260,7 +277,7 @@ def ensure_chat_history() -> None:
         st.session_state.messages = [
             {
                 "role": "assistant",
-                "content": "こんにちは。Just One Cookbookの情報を元に、和食レシピを一緒に組み立てます。",
+                "content": "こんにちは。保存済みレシピ参照を元に、和食レシピを一緒に組み立てます。",
             }
         ]
 
@@ -298,7 +315,7 @@ def ensure_qwen_only_chat_history() -> None:
         ]
 
 
-def render_chat(force_rebuild: bool) -> None:
+def render_chat(force_rebuild: bool, llm_backend: str | None = None) -> None:
     # RAG Chatページです。保存済みレシピ文書を検索してから回答します。
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
@@ -311,7 +328,7 @@ def render_chat(force_rebuild: bool) -> None:
             show_missing_recipe_data_message()
             st.stop()
         try:
-            chatbot = load_chatbot(should_rebuild)
+            chatbot = load_chatbot(should_rebuild, llm_backend)
             # chatbotの読み込みに成功したら、再構築予約は消します。
             st.session_state.rebuild_index_next = False
         except RuntimeError as exc:
@@ -348,7 +365,7 @@ def render_chat(force_rebuild: bool) -> None:
 
 
 def render_qwen_rag_chat(force_rebuild: bool) -> None:
-    # Qwen RAG Chatページです。検索部分はGemini版と同じで、回答生成だけOllama Qwenに切り替えます。
+    # Qwen RAG Chatページです。検索部分は共通で、回答生成にOllama Qwenを使います。
     st.subheader("Qwen RAG Chat")
     st.caption(f"Model: `{QWEN_MODEL}` / Base URL: `{QWEN_BASE_URL}`")
 
@@ -535,6 +552,91 @@ def render_crawl4ai_check() -> None:
         st.code(result.extracted_content, language="json")
 
 
+def render_adaptive_crawl() -> None:
+    # crawl4ai AdaptiveCrawlerで、サイト内リンクを辿りながら調査範囲を広げます。
+    from app.adaptive_crawler import adaptive_architecture_preview, run_adaptive_site_research
+
+    st.subheader("Adaptive site research")
+    st.caption("crawl4ai Adaptive Crawlingで、調査クエリに対してサイト内URLを辿り、十分な情報量に達するまで探索します。")
+
+    start_url = st.text_input("開始URL", value="https://www.justonecookbook.com/")
+    query = st.text_area(
+        "調査クエリ",
+        "omurice recipe techniques, ingredients, variations, and serving notes",
+        height=90,
+    )
+    col_a, col_b, col_c = st.columns(3)
+    with col_a:
+        max_pages = st.slider("最大ページ数", min_value=3, max_value=30, value=12)
+        strategy = st.selectbox("探索戦略", ["statistical", "embedding"], index=0)
+    with col_b:
+        max_depth = st.slider("最大深さ", min_value=1, max_value=6, value=3)
+        top_k_links = st.slider("各ページで辿るリンク数", min_value=1, max_value=8, value=3)
+    with col_c:
+        confidence_threshold = st.slider("停止信頼度", min_value=0.3, max_value=0.95, value=0.75, step=0.05)
+        top_k_content = st.slider("LLM統合対象ページ数", min_value=1, max_value=10, value=6)
+
+    with st.expander("System architecture preview", expanded=False):
+        st.json(
+            adaptive_architecture_preview(
+                start_url=start_url,
+                query=query,
+                strategy=strategy,
+                max_pages=max_pages,
+                max_depth=max_depth,
+                top_k_links=top_k_links,
+                confidence_threshold=confidence_threshold,
+            )
+        )
+
+    if st.button("Adaptive Crawlを実行", type="primary"):
+        try:
+            with st.spinner("Adaptive Crawlingでサイト内調査を実行中..."):
+                result = run_adaptive_site_research(
+                    start_url=start_url,
+                    query=query,
+                    max_pages=max_pages,
+                    max_depth=max_depth,
+                    top_k_links=top_k_links,
+                    confidence_threshold=confidence_threshold,
+                    strategy=strategy,
+                    top_k_content=top_k_content,
+                )
+        except Exception as exc:
+            log_error("Crawl4AI adaptive site research", exc, details=f"start_url={start_url}, query={query}")
+            st.error("Adaptive Crawlに失敗しました。設定、ネットワーク、Ollama/Geminiの状態を確認してください。")
+            st.code(str(exc))
+            return
+
+        st.success("Adaptive Crawlが完了しました。")
+        col_a, col_b, col_c = st.columns(3)
+        col_a.metric("Confidence", f"{result.confidence:.0%}")
+        col_b.metric("Crawled pages", len(result.crawled_urls))
+        col_c.metric("Total sec", f"{result.timings.get('total_sec', 0):.2f}")
+
+        st.write("LLM synthesis")
+        st.markdown(result.synthesis)
+
+        with st.expander("Relevant pages", expanded=True):
+            for page in result.relevant_pages:
+                st.markdown(f"**{page.title}**")
+                st.caption(f"{page.url} / score={page.score:.3f}")
+                st.code(page.content[:1400])
+
+        with st.expander("Crawled URLs"):
+            st.json(result.crawled_urls)
+        with st.expander("Saved files"):
+            st.json(
+                {
+                    "output_dir": str(result.output_dir),
+                    "knowledge_base": str(result.knowledge_base_path),
+                    "result": str(result.result_path),
+                }
+            )
+        with st.expander("Architecture"):
+            st.json(result.architecture)
+
+
 def render_dataframe_mode() -> None:
     # PostgreSQLに保存したJSON生成結果をpandas DataFrameとして表示するページです。
     from app.view_db_dataframe import recipes_dataframe
@@ -559,16 +661,18 @@ def main() -> None:
     st.title("Recipe Inference RAG Chatbot")
 
     # サイドバーのradioで選ばれたモードごとに、描画関数を切り替えます。
-    if mode == "RAG Chat":
-        render_chat(force_rebuild)
-    elif mode == "Qwen RAG Chat":
+    if mode == "Qwen RAG Chat":
         render_qwen_rag_chat(force_rebuild)
+    elif mode == "Gemini RAG Chat":
+        render_chat(force_rebuild, llm_backend="gemini")
     elif mode == "Qwen Chat":
         render_qwen_chat()
     elif mode == "Gemini Chat":
         render_gemini_chat()
     elif mode == "Crawl4AI Check":
         render_crawl4ai_check()
+    elif mode == "Adaptive Crawl":
+        render_adaptive_crawl()
     elif mode == "JSON + PostgreSQL":
         render_json_mode(force_rebuild)
     else:

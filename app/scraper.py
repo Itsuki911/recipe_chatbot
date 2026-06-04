@@ -42,6 +42,30 @@ def _safe_slug(value: str) -> str:
     return candidate or "recipe-page"
 
 
+def is_likely_recipe_page_url(url: str) -> bool:
+    parsed = urlparse(url)
+    path = parsed.path.strip("/")
+    if not path:
+        return False
+    parts = [part for part in path.split("/") if part]
+    if len(parts) != 1:
+        return False
+    excluded = {
+        "about",
+        "category",
+        "categories",
+        "contact",
+        "privacy-policy",
+        "recipe-index",
+        "recipes",
+        "search",
+        "shop",
+        "tag",
+        "tags",
+    }
+    return parts[0].lower() not in excluded
+
+
 def _extract_recipe_text(html: str) -> tuple[str, str]:
     # HTMLからタイトルと本文を取り出します。CSS selectorはサイト構造に合わせています。
     soup = bs4.BeautifulSoup(html, "html.parser")
@@ -149,7 +173,7 @@ def discover_recipe_links_from_search(query: str, max_results: int = 5) -> list[
         parsed = urlparse(href)
         if parsed.netloc != urlparse(JOC_START_URL).netloc:
             continue
-        if href in seen or not parsed.path.strip("/"):
+        if href in seen or not is_likely_recipe_page_url(href):
             continue
         seen.add(href)
         links.append(href)
@@ -162,7 +186,9 @@ def save_many_recipe_pages(urls: Iterable[str], max_pages: int = 5) -> list[Save
     # 複数URLを順に保存します。失敗したURLがあっても、他のURL保存は続けます。
     saved: list[SavedPage] = []
     errors: list[str] = []
-    for url in list(urls)[:max_pages]:
+    for url in list(urls):
+        if len(saved) >= max_pages:
+            break
         try:
             saved.append(save_recipe_page_from_url(url))
         except Exception as exc:

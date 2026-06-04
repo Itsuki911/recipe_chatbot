@@ -14,6 +14,7 @@ import requests
 from pydantic import BaseModel, Field
 
 from app import config
+from app.llm import build_chat_llm, strip_hidden_reasoning
 from app.rag_chatbot import _headers
 
 
@@ -65,16 +66,7 @@ def _run_async(coro):
 
 
 def _build_llm():
-    if not config.GOOGLE_API_KEY:
-        raise RuntimeError("GOOGLE_API_KEY is required for Crawl4AI performance query planning.")
-
-    from langchain_google_genai import ChatGoogleGenerativeAI
-
-    return ChatGoogleGenerativeAI(
-        model=config.GEMINI_MODEL,
-        temperature=0.0,
-        google_api_key=config.GOOGLE_API_KEY,
-    )
+    return build_chat_llm(config.STRUCTURED_LLM_BACKEND, temperature=0.0)
 
 
 def build_search_query(user_request: str) -> str:
@@ -90,7 +82,7 @@ def build_search_query(user_request: str) -> str:
             ("human", user_request),
         ]
     )
-    query = str(response.content).strip().strip('"')
+    query = strip_hidden_reasoning(str(response.content)).strip().strip('"')
     return query or user_request
 
 
@@ -173,9 +165,11 @@ async def crawl_and_extract_with_llm(url: str, user_request: str) -> tuple[str, 
     from crawl4ai import AsyncWebCrawler, BrowserConfig, CacheMode, CrawlerRunConfig, LLMConfig
     from crawl4ai import LLMExtractionStrategy
 
-    provider = "gemini/gemini-2.5-flash"
+    provider = config.CRAWL4AI_LLM_PROVIDER
+    api_token = None if provider.startswith("ollama/") else config.GOOGLE_API_KEY
+    base_url = config.QWEN_OLLAMA_BASE_URL if provider.startswith("ollama/") else None
     llm_strategy = LLMExtractionStrategy(
-        llm_config=LLMConfig(provider=provider, api_token=config.GOOGLE_API_KEY),
+        llm_config=LLMConfig(provider=provider, api_token=api_token, base_url=base_url),
         schema=CrawlFinding.model_json_schema(),
         extraction_type="schema",
         instruction=(

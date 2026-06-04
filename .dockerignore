@@ -1,9 +1,11 @@
-.env
-.env.*
-!.env.example
+.git
+.venv
 __pycache__/
 *.pyc
 .DS_Store
+.env
+.env.*
+!.env.example
 .playwright-mcp/
 .codegraph/
 .cursor/
@@ -19,4 +21,3 @@ data/adaptive_crawls/
 data/*.db
 data/*.csv
 data/*.jsonl
-.streamlit/secrets.toml
