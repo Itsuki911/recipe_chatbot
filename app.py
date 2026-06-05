@@ -429,6 +429,12 @@ def persist_current_conversation(*, ai_type: str, messages_key: str, conversatio
         st.session_state[conversation_key] = fallback_id
 
 
+def show_postgres_recovery_hint() -> None:
+    st.info("PostgreSQLが停止している可能性があります。過去会話をDBに保存・表示したい場合は、別ターミナルで次を実行してください。")
+    st.code("docker compose -f docker/docker-compose.yml up -d db", language="bash")
+    st.caption("DBを使わず続ける場合は、会話はローカル退避履歴に保存されます。")
+
+
 def render_past_conversation() -> None:
     from app.database import (
         fetch_chat_conversation,
@@ -486,11 +492,13 @@ def render_past_conversation() -> None:
         conversations = fetch_chat_conversations_fallback()
         if conversations:
             st.warning("PostgreSQLに接続できないため、ローカル退避履歴を表示しています。")
+            show_postgres_recovery_hint()
             with st.expander("DB接続エラー"):
                 st.code(str(exc))
         else:
             st.error("過去会話をDBから読み込めませんでした。")
-            st.info("PostgreSQLを起動するか、チャットを実行してローカル退避履歴を作成してください。")
+            show_postgres_recovery_hint()
+            st.info("まだローカル退避履歴もありません。チャットを実行すると、DB停止中でも退避履歴が作成されます。")
             with st.expander("エラー詳細"):
                 st.code(str(exc))
             return
@@ -531,6 +539,9 @@ def render_past_conversation() -> None:
 def render_openrouter_rag_chat(force_rebuild: bool) -> None:
     st.subheader("OpenRouter RAG Chat")
     st.caption(f"Active free model: `{active_openrouter_model_label()}`")
+    if st.session_state.get("conversation_save_error"):
+        st.warning("直近の会話はPostgreSQLへ保存できなかったため、ローカル退避履歴に保存しています。")
+        show_postgres_recovery_hint()
 
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
@@ -705,6 +716,9 @@ def render_openrouter_chat() -> None:
 
     st.subheader("OpenRouter Chat")
     st.caption(f"RAGなし。Active free model: `{active_openrouter_model_label()}`")
+    if st.session_state.get("conversation_save_error"):
+        st.warning("直近の会話はPostgreSQLへ保存できなかったため、ローカル退避履歴に保存しています。")
+        show_postgres_recovery_hint()
 
     for message in st.session_state.openrouter_messages:
         with st.chat_message(message["role"]):
