@@ -25,20 +25,20 @@ DATABASE_URL = os.getenv(
     "postgresql+psycopg2://recipe_user:recipe_password@localhost:5432/recipe_chatbot",
 )
 
-# Geminiは GOOGLE_API_KEY が正式名ですが、古い名前 GEMINI_API_KEY でも動くようにしています。
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+# OpenRouter経由で無料モデルだけを使います。API keyは .env に置き、コードへ直書きしません。
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+OPENROUTER_BASE_URL = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "google/gemma-4-26b-a4b-it:free")
+OPENROUTER_HTTP_REFERER = os.getenv("OPENROUTER_HTTP_REFERER", "")
+OPENROUTER_APP_TITLE = os.getenv("OPENROUTER_APP_TITLE", "Recipe RAG Chatbot")
+OPENROUTER_ACTIVE_MODEL_PATH = Path(
+    os.getenv("OPENROUTER_ACTIVE_MODEL_PATH", str(DATA_DIR / "openrouter_active_model.txt"))
+)
+OPENROUTER_TIMEOUT_SECONDS = float(os.getenv("OPENROUTER_TIMEOUT_SECONDS", "60"))
+OPENROUTER_MAX_TOKENS = int(os.getenv("OPENROUTER_MAX_TOKENS", "1200"))
 
-# OllamaのOpenAI互換APIでローカルQwenを使うための設定です。
-# QWEN_API_KEYはOllamaでは実認証に使われませんが、ChatOpenAIの引数として必要です。
-QWEN_BASE_URL = os.getenv("QWEN_BASE_URL", "http://localhost:11434/v1")
-QWEN_MODEL = os.getenv("QWEN_MODEL", "qwen3:4b")
-QWEN_API_KEY = os.getenv("QWEN_API_KEY", "ollama")
-QWEN_OLLAMA_BASE_URL = os.getenv("QWEN_OLLAMA_BASE_URL", QWEN_BASE_URL.removesuffix("/v1"))
-
-# RAGの構成は環境変数で切り替えられます。
-# デフォルトは Qwen + FastEmbed + TurboVec です。Geminiへ戻す場合は各 *_LLM_BACKEND=gemini にします。
-MAIN_LLM_BACKEND = os.getenv("MAIN_LLM_BACKEND", "qwen").lower()
+# RAGの構成はOpenRouter + FastEmbed + TurboVecに統一します。
+MAIN_LLM_BACKEND = os.getenv("MAIN_LLM_BACKEND", "openrouter").lower()
 HF_MODEL_ID = os.getenv("HF_MODEL_ID", "google/gemma-4-E2B-it")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5")
 FASTEMBED_MODEL = os.getenv("FASTEMBED_MODEL", EMBEDDING_MODEL)
@@ -47,7 +47,7 @@ EMBEDDING_DIMS = int(os.getenv("EMBEDDING_DIMS", "384"))
 RAG_LLM_BACKEND = os.getenv("RAG_LLM_BACKEND", MAIN_LLM_BACKEND).lower()
 DEEP_AGENT_LLM_BACKEND = os.getenv("DEEP_AGENT_LLM_BACKEND", MAIN_LLM_BACKEND).lower()
 STRUCTURED_LLM_BACKEND = os.getenv("STRUCTURED_LLM_BACKEND", MAIN_LLM_BACKEND).lower()
-CRAWL4AI_LLM_PROVIDER = os.getenv("CRAWL4AI_LLM_PROVIDER", f"ollama/{QWEN_MODEL}")
+CRAWL4AI_LLM_PROVIDER = os.getenv("CRAWL4AI_LLM_PROVIDER", f"openrouter/{OPENROUTER_MODEL}")
 RAG_EMBEDDING_BACKEND = os.getenv("RAG_EMBEDDING_BACKEND", "fastembed").lower()
 RAG_VECTOR_STORE = os.getenv("RAG_VECTOR_STORE", "turbovec").lower()
 TURBOVEC_BIT_WIDTH = int(os.getenv("TURBOVEC_BIT_WIDTH", "4"))

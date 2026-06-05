@@ -57,6 +57,7 @@ def generate_recipe_json(
                 """You are a Japanese recipe personalization assistant.
 Use the retrieved recipe reference context and the user profile to produce valid JSON only.
 Do not invent details that conflict with the context.
+Detect the user's language from their request and write every user-facing JSON string in that same language unless they ask otherwise.
 
 User profile:
 {profile}
@@ -73,7 +74,7 @@ Retrieved context:
         stop_after_attempt=3,
         wait_exponential_jitter=True,
     )
-    # Qwenがhidden reasoningを含めても、parserへ渡す前に取り除きます。
+    # 一部のfree modelがhidden reasoningを含めても、parserへ渡す前に取り除きます。
     raw_proposal = chain.invoke(
         {
             "question": question,

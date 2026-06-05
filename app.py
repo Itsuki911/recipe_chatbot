@@ -8,20 +8,16 @@ import streamlit as st
 try:
     from app.config import (
         DEEP_AGENT_LLM_BACKEND,
-        GOOGLE_API_KEY,
         LOCAL_RECIPE_DIR,
-        QWEN_BASE_URL,
-        QWEN_MODEL,
+        OPENROUTER_MODEL,
         VECTOR_INDEX_DIR,
         WEB_RECIPE_REFERENCE_DIR,
     )
 except ImportError:
     # config.pyのimport前に壊れても、Streamlit画面とログ出力を最低限続けるためのfallbackです。
     fallback_data_dir = Path(__file__).resolve().parent / "data"
-    GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
-    QWEN_BASE_URL = os.getenv("QWEN_BASE_URL", "http://localhost:11434/v1")
-    QWEN_MODEL = os.getenv("QWEN_MODEL", "qwen3:4b")
-    DEEP_AGENT_LLM_BACKEND = os.getenv("DEEP_AGENT_LLM_BACKEND", os.getenv("MAIN_LLM_BACKEND", "qwen")).lower()
+    OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "google/gemma-4-26b-a4b-it:free")
+    DEEP_AGENT_LLM_BACKEND = os.getenv("DEEP_AGENT_LLM_BACKEND", os.getenv("MAIN_LLM_BACKEND", "openrouter")).lower()
     VECTOR_INDEX_DIR = fallback_data_dir / "turbovec_index"
     LOCAL_RECIPE_DIR = fallback_data_dir / "joc_pages"
     WEB_RECIPE_REFERENCE_DIR = fallback_data_dir / "web_recipe_reference"
@@ -54,15 +50,6 @@ def load_chatbot(force_rebuild_index: bool = False, llm_backend: str | None = No
 
     return RecipeRAGChatbot(force_rebuild_index=force_rebuild_index, llm_backend=llm_backend)
 
-
-@st.cache_resource(show_spinner="Loading Qwen RAG chatbot...")
-def load_qwen_chatbot(force_rebuild_index: bool = False):
-    # Qwen専用RAGも同じRAG indexを使いますが、LLM指定が別なので通常RAGとは別cacheにします。
-    from app.qwen import QwenRAGChatbot
-
-    return QwenRAGChatbot(force_rebuild_index=force_rebuild_index)
-
-
 def apply_styles() -> None:
     # 画面全体の幅、サイドバー色、source表示用chipだけをCSSで軽く整えます。
     st.markdown(
@@ -84,8 +71,8 @@ def apply_styles() -> None:
 def show_recipe_source_error(exc: Exception) -> None:
     # RAG用データの読み込みに失敗した時の専用エラー表示です。
     log_error("Recipe source loading", exc)
-    if is_gemini_key_error(exc):
-        show_gemini_key_error(exc)
+    if is_openrouter_config_error(exc):
+        show_openrouter_config_error(exc)
         return
 
     st.error("RAG用のレシピ文書を読み込めませんでした。")
@@ -98,40 +85,37 @@ def show_recipe_source_error(exc: Exception) -> None:
         st.code(str(exc))
 
 
-def is_gemini_key_error(exc: Exception) -> bool:
-    # Gemini APIキー由来のエラーかどうかを文字列でざっくり判定します。
+def is_openrouter_config_error(exc: Exception) -> bool:
+    # OpenRouter APIキー・モデル安全性由来のエラーかどうかを文字列でざっくり判定します。
     message = str(exc)
     return (
-        "GOOGLE_API_KEY" in message
-        or "GEMINI_API_KEY" in message
-        or "API key was reported as leaked" in message
-        or "PERMISSION_DENIED" in message
+        "OPENROUTER_API_KEY" in message
+        or "Unsafe OpenRouter model" in message
+        or "Use only models ending with ':free'" in message
+        or "402" in message
     )
 
 
-def show_gemini_key_error(exc: Exception) -> None:
-    # Gemini APIキー不足・漏洩済み・権限エラーの時に、ユーザーが次に取る行動を表示します。
+def show_openrouter_config_error(exc: Exception) -> None:
+    # OpenRouter APIキー不足・有料モデル指定の時に、ユーザーが次に取る行動を表示します。
     message = str(exc)
-    if "reported as leaked" in message:
-        st.error("Gemini API keyが漏洩済みとして拒否されました。")
-        st.info(
-            "Google AI Studioで新しいAPI keyを再発行し、`.env` の `GOOGLE_API_KEY` を更新してください。"
-            "更新後に `docker compose -f docker/docker-compose.yml up -d` を実行すると、コンテナへ反映されます。"
-        )
+    if "Unsafe OpenRouter model" in message:
+        st.error("OpenRouterのモデル指定が無料モデルではありません。")
+        st.info("`.env` の `OPENROUTER_MODEL` は必ず `:free` で終わる model id にしてください。")
     else:
-        st.error("Gemini API keyが設定されていない、または利用できません。")
+        st.error("OpenRouter API keyが設定されていない、または利用できません。")
         st.info(
-            "RAGの回答生成にはGemini 2.5 Flashを使います。"
-            "`.env` に `GOOGLE_API_KEY=...` を設定してから `docker compose -f docker/docker-compose.yml up -d` を実行してください。"
+            "`.env` に `OPENROUTER_API_KEY=...` を設定してください。"
+            "`OPENROUTER_MODEL` は `google/gemma-4-26b-a4b-it:free` のように `:free` で終わるモデルだけ使えます。"
         )
     with st.expander("詳細エラー"):
         st.code(message)
 
 
 def show_generation_error(exc: Exception, fallback_message: str) -> None:
-    # Chat/JSON/Gemini回答生成で共通利用するエラー表示です。
-    if is_gemini_key_error(exc):
-        show_gemini_key_error(exc)
+    # Chat/JSON/OpenRouter回答生成で共通利用するエラー表示です。
+    if is_openrouter_config_error(exc):
+        show_openrouter_config_error(exc)
         return
 
     st.error(fallback_message)
@@ -188,14 +172,11 @@ def render_sidebar() -> tuple[bool, str]:
         mode = st.radio(
             "モード",
             [
-                "Qwen RAG Chat",
-                "Gemini RAG Chat",
-                "Qwen Chat",
-                "Gemini Chat",
+                "OpenRouter RAG Chat",
+                "OpenRouter Chat",
+                "past conversation",
                 "Crawl4AI Check",
                 "Adaptive Crawl",
-                "JSON + PostgreSQL",
-                "DB DataFrame",
             ],
             label_visibility="collapsed",
         )
@@ -212,7 +193,6 @@ def render_sidebar() -> tuple[bool, str]:
                         saved = save_recipe_page_from_url(recipe_url)
                         # 新しい文書を保存したので、古いRAG chatbot cacheを破棄します。
                         load_chatbot.clear()
-                        load_qwen_chatbot.clear()
                         # 次回Chat/JSON時にindex再構築を自動実行するためのフラグです。
                         st.session_state.rebuild_index_next = True
                         st.success(f"保存しました: {saved.path.name} ({saved.text_chars} chars)")
@@ -225,14 +205,11 @@ def render_sidebar() -> tuple[bool, str]:
         with st.expander("Deep Agent自動収集"):
             # crawl4ai Agentic CrawlerはLLMで検索計画を立て、Best-first crawlでWeb参照を保存します。
             st.warning("crawl4ai Agentic CrawlerはLLM、Web検索、複数ページのクロールを使うため、数分かかることがあります。")
-            deep_agent_unavailable = DEEP_AGENT_LLM_BACKEND in {"gemini", "google"} and not GOOGLE_API_KEY
-            if deep_agent_unavailable:
-                st.caption("GeminiでDeep Agentを使うには `.env` に `GOOGLE_API_KEY` が必要です。")
-            else:
-                st.caption(
-                    f"LLM: `{DEEP_AGENT_LLM_BACKEND}`。"
-                    f"Web検索、seed URL選択、crawl4ai deep crawl、保存を実行します。保存先: `{WEB_RECIPE_REFERENCE_DIR}`"
-                )
+            deep_agent_unavailable = False
+            st.caption(
+                f"LLM: `{DEEP_AGENT_LLM_BACKEND}` / default model: `{OPENROUTER_MODEL}`。"
+                f"Web検索、seed URL選択、crawl4ai deep crawl、保存を実行します。保存先: `{WEB_RECIPE_REFERENCE_DIR}`"
+            )
             deep_query = st.text_input("収集したいレシピ/調査テーマ", placeholder="omurice recipe technique and variations")
             deep_max_pages = st.slider("最大保存ページ数", min_value=1, max_value=5, value=3)
             if st.button("Deep Agentで収集", use_container_width=True, disabled=deep_agent_unavailable):
@@ -247,7 +224,6 @@ def render_sidebar() -> tuple[bool, str]:
                             )
                             # Deep Agentが保存したページもRAGの新規材料なので、cacheを消して再構築予約します。
                             load_chatbot.clear()
-                            load_qwen_chatbot.clear()
                             st.session_state.rebuild_index_next = True
                             st.success(f"{len(result.saved_pages)}件保存しました。")
                             st.caption(result.notes)
@@ -282,230 +258,460 @@ def ensure_chat_history() -> None:
         ]
 
 
-def ensure_gemini_chat_history() -> None:
-    # Gemini単体テスト用の履歴です。RAGチャットの履歴とは分けて管理します。
-    if "gemini_messages" not in st.session_state:
-        st.session_state.gemini_messages = [
+def ensure_openrouter_chat_history() -> None:
+    # OpenRouter単体テスト用の履歴です。RAGチャットの履歴とは分けます。
+    if "openrouter_messages" not in st.session_state:
+        st.session_state.openrouter_messages = [
             {
                 "role": "assistant",
-                "content": "こんにちは。RAGを使わず、Geminiだけで回答します。",
+                "content": "こんにちは。RAGを使わず、OpenRouter free modelだけで回答します。",
             }
         ]
 
 
-def ensure_qwen_chat_history() -> None:
-    # Ollama Qwen RAG用の会話履歴です。Gemini RAGとは分けて比較しやすくします。
-    if "qwen_messages" not in st.session_state:
-        st.session_state.qwen_messages = [
-            {
-                "role": "assistant",
-                "content": "こんにちは。Ollama上のQwenを使い、同じRAG情報を元に回答します。",
-            }
-        ]
+def parse_yes_no(value: str) -> bool | None:
+    normalized = value.strip().lower().strip(" .。!！?？")
+    yes_values = {"yes", "y", "はい", "うん", "お願いします", "探して", "実行", "実行して"}
+    no_values = {"no", "n", "いいえ", "不要", "しない", "なし", "大丈夫"}
+    if normalized in yes_values:
+        return True
+    if normalized in no_values:
+        return False
+    return None
 
 
-def ensure_qwen_only_chat_history() -> None:
-    # Qwen単体テスト用の履歴です。RAGありのQwen履歴とは分けます。
-    if "qwen_only_messages" not in st.session_state:
-        st.session_state.qwen_only_messages = [
-            {
-                "role": "assistant",
-                "content": "こんにちは。RAGを使わず、Ollama上のQwenだけで回答します。",
-            }
-        ]
+def render_sources(sources: list[str]) -> None:
+    if not sources:
+        return
+    st.caption("Sources")
+    st.markdown(
+        " ".join(f'<span class="source-chip">{url}</span>' for url in sources),
+        unsafe_allow_html=True,
+    )
 
 
-def render_chat(force_rebuild: bool, llm_backend: str | None = None) -> None:
-    # RAG Chatページです。保存済みレシピ文書を検索してから回答します。
+def active_openrouter_model_label() -> str:
+    try:
+        from app.openrouter import get_active_openrouter_model
+
+        return get_active_openrouter_model()
+    except Exception:
+        return OPENROUTER_MODEL
+
+
+def render_openrouter_model_switch(task: dict) -> None:
+    from app.openrouter import ranked_free_openrouter_models, set_active_openrouter_model
+
+    st.warning("OpenRouter free modelの利用制限に達しました。別の無料モデルへ切り替えて、このタスクを続行できます。")
+    if task.get("rate_limited_model"):
+        st.caption(f"Rate limited model: `{task['rate_limited_model']}`")
+
+    try:
+        candidates = ranked_free_openrouter_models(limit=5)
+    except Exception as exc:
+        log_error("OpenRouter free model listing", exc)
+        st.error("OpenRouterの無料モデル一覧を取得できませんでした。")
+        with st.expander("詳細エラー"):
+            st.code(str(exc))
+        st.stop()
+
+    options = [model.id for model in candidates]
+    if not options:
+        st.error("切り替え可能なOpenRouter free modelが見つかりませんでした。")
+        st.stop()
+
+    ranking_rows = [model for model in candidates if model.weekly_tokens is not None]
+    if ranking_rows:
+        st.caption("OpenRouter全体で世界中のユーザーが直近7日間に処理したtoken数のfree model上位5件")
+        st.dataframe(
+            [
+                {
+                    "model_id": model.id,
+                    "model_name": model.name,
+                    "last_7_days_total_tokens": int(model.weekly_tokens or 0),
+                }
+                for model in ranking_rows
+            ],
+            use_container_width=True,
+            hide_index=True,
+        )
+    else:
+        st.caption("OpenRouterの7日間tokenランキングを取得できなかったため、取得できたfree model候補を表示します。")
+
+    selected = st.selectbox(
+        "切り替え先 free model",
+        options,
+        format_func=lambda model_id: next(
+            (
+                f"{model.id} - {model.name}"
+                + (f" / 7d tokens {model.weekly_tokens:,}" if model.weekly_tokens is not None else "")
+                + (f" / context {model.context_length}" if model.context_length else "")
+                for model in candidates
+                if model.id == model_id
+            ),
+            model_id,
+        ),
+    )
+    if st.button("このモデルに切り替えて続行", type="primary"):
+        set_active_openrouter_model(selected)
+        task["needs_model_switch"] = False
+        task["selected_model"] = selected
+        st.session_state.openrouter_pending_task = task
+        load_chatbot.clear()
+        st.rerun()
+    st.stop()
+
+
+def defer_for_openrouter_model_switch(exc: Exception, task: dict) -> bool:
+    from app.openrouter import OpenRouterRateLimitError
+
+    if not isinstance(exc, OpenRouterRateLimitError):
+        return False
+    task["needs_model_switch"] = True
+    task["rate_limited_model"] = exc.model
+    st.session_state.openrouter_pending_task = task
+    render_openrouter_model_switch(task)
+    return True
+
+
+def deep_agent_offer_message(question: str) -> str:
+    return (
+        "ローカルのベクトルDBには、この質問へ直接答えるのに十分な情報が見つかりませんでした。\n\n"
+        "Deep Agentで対象レシピの情報をWebから探して保存し、RAGインデックスを更新してから回答しますか？\n\n"
+        f"対象: {question}\n\n"
+        "Yes / No で答えてください。YesならDeep Agentを実行し、NoならLLM自身の一般知識で回答します。"
+    )
+
+
+def run_chat_deep_agent_answer(
+    *,
+    question: str,
+    force_rebuild: bool,
+    load_current_chatbot,
+):
+    from app.deep_agent import run_deep_agent_recipe_collection_with_details
+
+    result = run_deep_agent_recipe_collection_with_details(question, max_pages=3)
+    load_chatbot.clear()
+    chatbot = load_current_chatbot(force_rebuild)
+    response = chatbot.answer(question)
+    return result, response
+
+
+def ensure_rag_chatbot_capabilities(chatbot, reload_chatbot):
+    required_methods = ("retrieve", "has_sufficient_context", "answer_from_docs", "answer_from_model_knowledge")
+    if all(hasattr(chatbot, method_name) for method_name in required_methods):
+        return chatbot
+    load_chatbot.clear()
+    return reload_chatbot()
+
+
+def persist_current_conversation(*, ai_type: str, messages_key: str, conversation_key: str) -> None:
+    from app.database import save_chat_conversation
+
+    try:
+        conversation_id = save_chat_conversation(
+            ai_type=ai_type,
+            messages=st.session_state.get(messages_key, []),
+            conversation_id=st.session_state.get(conversation_key),
+        )
+        st.session_state[conversation_key] = conversation_id
+    except Exception as exc:
+        log_error("Chat conversation PostgreSQL save", exc, details=f"ai_type={ai_type}")
+        st.session_state.conversation_save_error = str(exc)
+
+
+def render_past_conversation() -> None:
+    from app.database import fetch_chat_conversation, fetch_chat_conversations
+
+    st.subheader("past conversation")
+    selected_id = st.session_state.get("selected_conversation_id")
+
+    if selected_id:
+        conversation = fetch_chat_conversation(int(selected_id))
+        if not conversation:
+            st.warning("選択した会話が見つかりませんでした。")
+            if st.button("一覧に戻る"):
+                st.session_state.selected_conversation_id = None
+                st.rerun()
+            return
+
+        if st.button("一覧に戻る"):
+            st.session_state.selected_conversation_id = None
+            st.rerun()
+
+        created_at = conversation["created_at"].strftime("%Y-%m-%d %H:%M") if conversation.get("created_at") else "-"
+        col_date, col_label, col_ai = st.columns(3)
+        col_date.metric("Date", created_at)
+        col_label.metric("Conversation", f"conversation{conversation['id']}")
+        col_ai.metric("AI", conversation["ai_type"])
+        st.divider()
+
+        for message in conversation.get("messages") or []:
+            role = message.get("role", "assistant")
+            content = message.get("content", "")
+            if not content:
+                continue
+            with st.chat_message(role):
+                st.markdown(content)
+        return
+
+    try:
+        conversations = fetch_chat_conversations()
+    except Exception as exc:
+        log_error("Past conversation list", exc)
+        st.error("過去会話をDBから読み込めませんでした。")
+        with st.expander("エラー詳細"):
+            st.code(str(exc))
+        return
+
+    if not conversations:
+        st.info("保存済みの会話はまだありません。")
+        return
+
+    for conversation in conversations:
+        created_at = conversation["created_at"].strftime("%Y-%m-%d %H:%M") if conversation.get("created_at") else "-"
+        with st.container():
+            col_date, col_label, col_ai = st.columns(3)
+            col_date.markdown(f"**Date**  \n{created_at}")
+            col_label.markdown(f"**Conversation**  \nconversation{conversation['id']}")
+            col_ai.markdown(f"**AI**  \n{conversation['ai_type']}")
+            if st.button("この会話を見る", key=f"view_conversation_{conversation['id']}", use_container_width=True):
+                st.session_state.selected_conversation_id = conversation["id"]
+                st.rerun()
+            st.divider()
+
+
+
+def render_openrouter_rag_chat(force_rebuild: bool) -> None:
+    st.subheader("OpenRouter RAG Chat")
+    st.caption(f"Active free model: `{active_openrouter_model_label()}`")
+
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    if question := st.chat_input("例: 豚汁の材料と作り方、普通の味噌汁との違いを教えて"):
-        # サイドバーの手動再構築、または新規ページ保存後の自動再構築フラグを反映します。
-        should_rebuild = force_rebuild or st.session_state.get("rebuild_index_next", False)
-        if not recipe_knowledge_ready(should_rebuild):
-            show_missing_recipe_data_message()
-            st.stop()
-        try:
-            chatbot = load_chatbot(should_rebuild, llm_backend)
-            # chatbotの読み込みに成功したら、再構築予約は消します。
-            st.session_state.rebuild_index_next = False
-        except RuntimeError as exc:
-            show_recipe_source_error(exc)
-            st.stop()
+    pending_task = st.session_state.get("openrouter_pending_task")
+    if pending_task and pending_task.get("type") in {"openrouter_rag", "openrouter_rag_deep_agent_choice"}:
+        if pending_task.get("needs_model_switch"):
+            render_openrouter_model_switch(pending_task)
+        question = pending_task["question"]
+        task_type = pending_task["type"]
+        choice = pending_task.get("choice")
+        st.session_state.openrouter_pending_task = None
+    else:
+        question = None
+        task_type = "openrouter_rag"
+        choice = None
 
-        st.session_state.messages.append({"role": "user", "content": question})
-        with st.chat_message("user"):
-            st.markdown(question)
+    pending = st.session_state.get("openrouter_rag_deep_agent_pending")
+    if question is None and (user_text := st.chat_input("例: 豚汁の材料と作り方、普通の味噌汁との違いを教えて")):
+        if pending:
+            st.session_state.messages.append({"role": "user", "content": user_text})
+            persist_current_conversation(
+                ai_type="OpenRouter_RAG",
+                messages_key="messages",
+                conversation_key="openrouter_rag_conversation_id",
+            )
+            with st.chat_message("user"):
+                st.markdown(user_text)
+            parsed_choice = parse_yes_no(user_text)
+            if parsed_choice is None:
+                message = "Yes / No で答えてください。YesならDeep Agentで探し、NoならLLM自身の一般知識で回答します。"
+                with st.chat_message("assistant"):
+                    st.markdown(message)
+                st.session_state.messages.append({"role": "assistant", "content": message})
+                persist_current_conversation(
+                    ai_type="OpenRouter_RAG",
+                    messages_key="messages",
+                    conversation_key="openrouter_rag_conversation_id",
+                )
+                st.stop()
+            question = pending["question"]
+            choice = parsed_choice
+            task_type = "openrouter_rag_deep_agent_choice"
+            st.session_state.openrouter_rag_deep_agent_pending = None
+        else:
+            question = user_text
+            st.session_state.messages.append({"role": "user", "content": question})
+            persist_current_conversation(
+                ai_type="OpenRouter_RAG",
+                messages_key="messages",
+                conversation_key="openrouter_rag_conversation_id",
+            )
+            with st.chat_message("user"):
+                st.markdown(question)
+
+    if question is None:
+        return
+
+    if task_type == "openrouter_rag_deep_agent_choice":
         with st.chat_message("assistant"):
             try:
-                with st.spinner("レシピページを検索して回答を作成中..."):
-                    # ここでretriever検索、LLM回答生成、long-term memory保存が実行されます。
-                    response = chatbot.answer(question)
+                if choice:
+                    with st.spinner("Deep Agentで情報を探して保存し、RAGインデックスを再作成しています..."):
+                        result, response = run_chat_deep_agent_answer(
+                            question=question,
+                            force_rebuild=True,
+                            load_current_chatbot=lambda rebuild: load_chatbot(rebuild, "openrouter"),
+                        )
+                    prefix = f"Deep Agentで{len(result.saved_pages)}件の参照を保存しました。\n\n"
+                else:
+                    chatbot = ensure_rag_chatbot_capabilities(
+                        load_chatbot(False, "openrouter"),
+                        lambda: load_chatbot(False, "openrouter"),
+                    )
+                    with st.spinner("OpenRouter free model自身の一般知識で回答を作成中..."):
+                        response = chatbot.answer_from_model_knowledge(question)
+                    prefix = "ローカルRAGではなく、OpenRouter free model自身の一般知識で回答します。\n\n"
             except Exception as exc:
-                log_error(
-                    "Chat conversation response generation",
+                defer_for_openrouter_model_switch(
                     exc,
-                    details=f"question={question}",
+                    {
+                        "type": "openrouter_rag_deep_agent_choice",
+                        "question": question,
+                        "choice": choice,
+                    },
                 )
-                error_message = "回答生成中にエラーが発生しました。開発者向けログに記録しました。"
+                log_error("OpenRouter RAG Deep Agent choice handling", exc, details=f"question={question}")
+                error_message = "OpenRouter RAG回答生成中にエラーが発生しました。"
                 show_generation_error(exc, error_message)
                 st.session_state.messages.append({"role": "assistant", "content": error_message})
-                st.stop()
-            st.markdown(response.answer)
-            if response.sources:
-                # RAGで参照されたsourceをchip風に表示します。
-                st.caption("Sources")
-                st.markdown(
-                    " ".join(f'<span class="source-chip">{url}</span>' for url in response.sources),
-                    unsafe_allow_html=True,
+                persist_current_conversation(
+                    ai_type="OpenRouter_RAG",
+                    messages_key="messages",
+                    conversation_key="openrouter_rag_conversation_id",
                 )
-        st.session_state.messages.append({"role": "assistant", "content": response.answer})
+                st.stop()
+            st.markdown(prefix + response.answer)
+            render_sources(response.sources)
+        st.session_state.rebuild_index_next = False
+        st.session_state.messages.append({"role": "assistant", "content": prefix + response.answer})
+        persist_current_conversation(
+            ai_type="OpenRouter_RAG",
+            messages_key="messages",
+            conversation_key="openrouter_rag_conversation_id",
+        )
+        st.stop()
 
+    should_rebuild = force_rebuild or st.session_state.get("rebuild_index_next", False)
+    if not recipe_knowledge_ready(should_rebuild):
+        show_missing_recipe_data_message()
+        st.stop()
+    try:
+        chatbot = load_chatbot(should_rebuild, "openrouter")
+        chatbot = ensure_rag_chatbot_capabilities(
+            chatbot,
+            lambda: load_chatbot(should_rebuild, "openrouter"),
+        )
+        st.session_state.rebuild_index_next = False
+    except RuntimeError as exc:
+        show_recipe_source_error(exc)
+        st.stop()
 
-def render_qwen_rag_chat(force_rebuild: bool) -> None:
-    # Qwen RAG Chatページです。検索部分は共通で、回答生成にOllama Qwenを使います。
-    st.subheader("Qwen RAG Chat")
-    st.caption(f"Model: `{QWEN_MODEL}` / Base URL: `{QWEN_BASE_URL}`")
-
-    for message in st.session_state.qwen_messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-
-    if question := st.chat_input("例: Qwenで、だし巻き卵の材料と作り方を説明して"):
-        should_rebuild = force_rebuild or st.session_state.get("rebuild_index_next", False)
-        if not recipe_knowledge_ready(should_rebuild):
-            show_missing_recipe_data_message()
-            st.stop()
+    with st.chat_message("assistant"):
         try:
-            chatbot = load_qwen_chatbot(should_rebuild)
-            st.session_state.rebuild_index_next = False
-        except RuntimeError as exc:
-            show_recipe_source_error(exc)
+            with st.spinner("レシピページを検索して、RAGで十分に答えられるか判定中..."):
+                docs = chatbot.retrieve(question)
+                has_context = chatbot.has_sufficient_context(question, docs)
+            if not has_context:
+                message = deep_agent_offer_message(question)
+                st.markdown(message)
+                st.session_state.openrouter_rag_deep_agent_pending = {"question": question}
+                st.session_state.messages.append({"role": "assistant", "content": message})
+                persist_current_conversation(
+                    ai_type="OpenRouter_RAG",
+                    messages_key="messages",
+                    conversation_key="openrouter_rag_conversation_id",
+                )
+                st.stop()
+            with st.spinner("RAG文脈を使ってOpenRouter free modelで回答を作成中..."):
+                response = chatbot.answer_from_docs(question, docs)
+        except Exception as exc:
+            defer_for_openrouter_model_switch(
+                exc,
+                {
+                    "type": "openrouter_rag",
+                    "question": question,
+                },
+            )
+            log_error("OpenRouter RAG chat response generation", exc, details=f"question={question}")
+            error_message = "OpenRouter RAG回答生成中にエラーが発生しました。"
+            show_generation_error(exc, error_message)
+            st.session_state.messages.append({"role": "assistant", "content": error_message})
+            persist_current_conversation(
+                ai_type="OpenRouter_RAG",
+                messages_key="messages",
+                conversation_key="openrouter_rag_conversation_id",
+            )
             st.stop()
-
-        st.session_state.qwen_messages.append({"role": "user", "content": question})
-        with st.chat_message("user"):
-            st.markdown(question)
-        with st.chat_message("assistant"):
-            try:
-                with st.spinner("RAG検索後、Ollama Qwenで回答を作成中..."):
-                    response = chatbot.answer(question)
-            except Exception as exc:
-                log_error("Qwen RAG chat response generation", exc, details=f"question={question}")
-                error_message = (
-                    "Qwen RAG回答生成中にエラーが発生しました。"
-                    "Ollamaが起動しているか、`ollama run qwen3:4b` が動くか確認してください。"
-                )
-                show_generation_error(exc, error_message)
-                st.session_state.qwen_messages.append({"role": "assistant", "content": error_message})
-                st.stop()
-            st.markdown(response.answer)
-            if response.sources:
-                st.caption("Sources")
-                st.markdown(
-                    " ".join(f'<span class="source-chip">{url}</span>' for url in response.sources),
-                    unsafe_allow_html=True,
-                )
-        st.session_state.qwen_messages.append({"role": "assistant", "content": response.answer})
-
-
-def render_qwen_chat() -> None:
-    # Qwen単体テストページです。RAG、DB、mem0を通さずOllama Qwenだけを呼びます。
-    from app.qwen import ask_qwen
-
-    st.subheader("Qwen-only Chat")
-    st.caption(f"RAGなし。Model: `{QWEN_MODEL}` / Base URL: `{QWEN_BASE_URL}`")
-
-    for message in st.session_state.qwen_only_messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-
-    if question := st.chat_input("例: Qwenだけで、だし巻き卵の作り方を説明して"):
-        st.session_state.qwen_only_messages.append({"role": "user", "content": question})
-        with st.chat_message("user"):
-            st.markdown(question)
-        with st.chat_message("assistant"):
-            try:
-                with st.spinner("Ollama Qwenに直接問い合わせ中..."):
-                    answer = ask_qwen(question)
-            except Exception as exc:
-                log_error("Qwen-only chat generation", exc, details=f"question={question}")
-                error_message = (
-                    "Qwen単体チャットの回答生成中にエラーが発生しました。"
-                    "Ollamaが起動しているか、`ollama run qwen3:4b` が動くか確認してください。"
-                )
-                show_generation_error(exc, error_message)
-                st.session_state.qwen_only_messages.append({"role": "assistant", "content": error_message})
-                st.stop()
-            st.markdown(answer)
-        st.session_state.qwen_only_messages.append({"role": "assistant", "content": answer})
-
-
-def render_gemini_chat() -> None:
-    # Gemini単体テストページです。RAG、DB、mem0を通さずGemini APIだけを呼びます。
-    from app.gemini_chatbot import ask_gemini
-
-    st.subheader("Gemini-only Chat")
-    st.caption("RAG、DB、long-term memoryを使わず、Gemini APIだけをテストします。")
-
-    for message in st.session_state.gemini_messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-
-    if question := st.chat_input("例: Geminiだけで、だし巻き卵の作り方を説明して"):
-        st.session_state.gemini_messages.append({"role": "user", "content": question})
-        with st.chat_message("user"):
-            st.markdown(question)
-        with st.chat_message("assistant"):
-            try:
-                with st.spinner("Geminiに直接問い合わせ中..."):
-                    # ask_geminiはretrieverを使わないので、Gemini API疎通確認に向いています。
-                    answer = ask_gemini(question)
-            except Exception as exc:
-                log_error("Gemini-only chat generation", exc, details=f"question={question}")
-                error_message = "Gemini単体チャットの回答生成中にエラーが発生しました。"
-                show_generation_error(exc, error_message)
-                st.session_state.gemini_messages.append({"role": "assistant", "content": error_message})
-                st.stop()
-            st.markdown(answer)
-        st.session_state.gemini_messages.append({"role": "assistant", "content": answer})
-
-
-def render_json_mode(force_rebuild: bool) -> None:
-    # RAG検索結果を使って構造化JSONを作り、PostgreSQLへ保存するページです。
-    from app.json_output import generate_recipe_json
-
-    st.subheader("Structured recipe JSON")
-    question = st.text_area(
-        "レシピ要望",
-        "Please share a healthier high-protein version of dashi-maki tamago.",
-        height=100,
+        st.markdown(response.answer)
+        render_sources(response.sources)
+    st.session_state.messages.append({"role": "assistant", "content": response.answer})
+    persist_current_conversation(
+        ai_type="OpenRouter_RAG",
+        messages_key="messages",
+        conversation_key="openrouter_rag_conversation_id",
     )
-    if st.button("JSONを生成してDBに保存", type="primary"):
-        with st.spinner("RAG検索、JSON生成、PostgreSQL保存を実行中..."):
-            try:
-                should_rebuild = force_rebuild or st.session_state.get("rebuild_index_next", False)
-                if not recipe_knowledge_ready(should_rebuild):
-                    show_missing_recipe_data_message()
-                    st.stop()
-                if should_rebuild:
-                    # 新しいローカル文書を反映するため、cache済みchatbotを破棄します。
-                    load_chatbot.clear()
-                    load_qwen_chatbot.clear()
-                result = generate_recipe_json(question, save_to_db=True, force_rebuild_index=should_rebuild)
-                st.session_state.rebuild_index_next = False
-            except RuntimeError as exc:
-                log_error("JSON generation", exc, details=f"question={question}")
-                show_recipe_source_error(exc)
-                st.stop()
-            except Exception as exc:
-                log_error("JSON generation", exc, details=f"question={question}")
-                show_generation_error(exc, "JSON生成中にエラーが発生しました。開発者向けログに記録しました。")
-                st.stop()
-        st.success(f"Saved to PostgreSQL. id={result.get('database_id')}")
-        st.json(result)
+
+
+def render_openrouter_chat() -> None:
+    from app.openrouter_chatbot import ask_openrouter
+
+    st.subheader("OpenRouter Chat")
+    st.caption(f"RAGなし。Active free model: `{active_openrouter_model_label()}`")
+
+    for message in st.session_state.openrouter_messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+    pending_task = st.session_state.get("openrouter_pending_task")
+    if pending_task and pending_task.get("type") == "openrouter_chat":
+        if pending_task.get("needs_model_switch"):
+            render_openrouter_model_switch(pending_task)
+        question = pending_task["question"]
+        st.session_state.openrouter_pending_task = None
+    elif question := st.chat_input("例: だし巻き卵の作り方を説明して"):
+        st.session_state.openrouter_messages.append({"role": "user", "content": question})
+        persist_current_conversation(
+            ai_type="OpenRouter",
+            messages_key="openrouter_messages",
+            conversation_key="openrouter_conversation_id",
+        )
+        with st.chat_message("user"):
+            st.markdown(question)
+    else:
+        return
+
+    with st.chat_message("assistant"):
+        try:
+            with st.spinner("OpenRouter free modelに問い合わせ中..."):
+                answer = ask_openrouter(question)
+        except Exception as exc:
+            defer_for_openrouter_model_switch(
+                exc,
+                {
+                    "type": "openrouter_chat",
+                    "question": question,
+                },
+            )
+            log_error("OpenRouter-only chat generation", exc, details=f"question={question}")
+            error_message = "OpenRouter単体チャットの回答生成中にエラーが発生しました。"
+            show_generation_error(exc, error_message)
+            st.session_state.openrouter_messages.append({"role": "assistant", "content": error_message})
+            persist_current_conversation(
+                ai_type="OpenRouter",
+                messages_key="openrouter_messages",
+                conversation_key="openrouter_conversation_id",
+            )
+            st.stop()
+        st.markdown(answer)
+    st.session_state.openrouter_messages.append({"role": "assistant", "content": answer})
+    persist_current_conversation(
+        ai_type="OpenRouter",
+        messages_key="openrouter_messages",
+        conversation_key="openrouter_conversation_id",
+    )
 
 
 def render_crawl4ai_check() -> None:
@@ -516,7 +722,7 @@ def render_crawl4ai_check() -> None:
     st.caption("URLを直接指定せず、ユーザー要望から検索クエリを作成して、候補URLを選び、crawl4aiでLLM抽出します。")
     user_request = st.text_area(
         "欲しい情報",
-        "最新のGemini APIで使える主要モデルと特徴を知りたい",
+        "OpenRouterのfree model一覧と使い分けを知りたい",
         height=100,
     )
     max_results = st.slider("検索候補URL数", min_value=1, max_value=8, value=5)
@@ -604,7 +810,7 @@ def render_adaptive_crawl() -> None:
                 )
         except Exception as exc:
             log_error("Crawl4AI adaptive site research", exc, details=f"start_url={start_url}, query={query}")
-            st.error("Adaptive Crawlに失敗しました。設定、ネットワーク、Ollama/Geminiの状態を確認してください。")
+            st.error("Adaptive Crawlに失敗しました。設定、ネットワーク、OpenRouterの状態を確認してください。")
             st.code(str(exc))
             return
 
@@ -637,46 +843,25 @@ def render_adaptive_crawl() -> None:
             st.json(result.architecture)
 
 
-def render_dataframe_mode() -> None:
-    # PostgreSQLに保存したJSON生成結果をpandas DataFrameとして表示するページです。
-    from app.view_db_dataframe import recipes_dataframe
-
-    st.subheader("PostgreSQL contents")
-    try:
-        df = recipes_dataframe()
-        st.dataframe(df, use_container_width=True, hide_index=True)
-    except Exception as exc:
-        log_error("DB DataFrame view", exc)
-        st.error(f"DBを読み込めませんでした: {exc}")
-
-
 def main() -> None:
     # Streamlitアプリ全体の入口です。sidebarで選んだmodeに応じて表示ページを切り替えます。
     apply_styles()
     force_rebuild, mode = render_sidebar()
     ensure_chat_history()
-    ensure_qwen_chat_history()
-    ensure_qwen_only_chat_history()
-    ensure_gemini_chat_history()
+    ensure_openrouter_chat_history()
     st.title("Recipe Inference RAG Chatbot")
 
     # サイドバーのradioで選ばれたモードごとに、描画関数を切り替えます。
-    if mode == "Qwen RAG Chat":
-        render_qwen_rag_chat(force_rebuild)
-    elif mode == "Gemini RAG Chat":
-        render_chat(force_rebuild, llm_backend="gemini")
-    elif mode == "Qwen Chat":
-        render_qwen_chat()
-    elif mode == "Gemini Chat":
-        render_gemini_chat()
+    if mode == "OpenRouter RAG Chat":
+        render_openrouter_rag_chat(force_rebuild)
+    elif mode == "OpenRouter Chat":
+        render_openrouter_chat()
+    elif mode == "past conversation":
+        render_past_conversation()
     elif mode == "Crawl4AI Check":
         render_crawl4ai_check()
-    elif mode == "Adaptive Crawl":
-        render_adaptive_crawl()
-    elif mode == "JSON + PostgreSQL":
-        render_json_mode(force_rebuild)
     else:
-        render_dataframe_mode()
+        render_adaptive_crawl()
 
 
 try:

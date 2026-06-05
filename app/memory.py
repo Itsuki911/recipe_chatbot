@@ -19,12 +19,13 @@ class RecipeLongTermMemory:
         # 起動時に重い初期化をしないための遅延初期化です。
         if not self.enabled:
             return None
-        if not config.GOOGLE_API_KEY:
-            # mem0の要約や抽出にGeminiを使うため、APIキーがない場合は無効扱いにします。
+        if not config.OPENROUTER_API_KEY:
+            # mem0の要約や抽出にもOpenRouter free modelを使います。API keyが無い場合は無効扱いにします。
             return None
 
         from mem0 import Memory
         from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
+        from app.openrouter import get_active_openrouter_model, validate_free_openrouter_model
 
         # qdrantや履歴DBの保存先を先に作っておくと、初回実行時のFileNotFoundを防げます。
         config.MEM0_DIR.mkdir(parents=True, exist_ok=True)
@@ -35,14 +36,17 @@ class RecipeLongTermMemory:
             model_name=config.FASTEMBED_MODEL,
             cache_dir=str(config.FASTEMBED_CACHE_DIR),
         )
+        active_model = get_active_openrouter_model()
+        validate_free_openrouter_model(active_model)
         # mem0はLLM・embedding・vector storeをまとめて設定します。
         # このアプリでは会話の好みをローカルQdrantに保存します。
         memory_config: dict[str, Any] = {
             "llm": {
-                "provider": "gemini",
+                "provider": "openai",
                 "config": {
-                    "model": config.GEMINI_MODEL,
-                    "api_key": config.GOOGLE_API_KEY,
+                    "model": active_model,
+                    "api_key": config.OPENROUTER_API_KEY,
+                    "openrouter_base_url": config.OPENROUTER_BASE_URL,
                     "temperature": 0.1,
                     "max_tokens": 1200,
                 },

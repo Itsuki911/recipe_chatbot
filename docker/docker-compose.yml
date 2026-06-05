@@ -9,18 +9,16 @@ services:
       - ../.env
     environment:
       DATABASE_URL: postgresql+psycopg2://recipe_user:recipe_password@db:5432/recipe_chatbot
-      MAIN_LLM_BACKEND: qwen
-      RAG_LLM_BACKEND: qwen
-      DEEP_AGENT_LLM_BACKEND: qwen
-      STRUCTURED_LLM_BACKEND: qwen
-      CRAWL4AI_LLM_PROVIDER: ollama/qwen3:4b
+      MAIN_LLM_BACKEND: openrouter
+      RAG_LLM_BACKEND: openrouter
+      DEEP_AGENT_LLM_BACKEND: openrouter
+      STRUCTURED_LLM_BACKEND: openrouter
+      CRAWL4AI_LLM_PROVIDER: openrouter/google/gemma-4-26b-a4b-it:free
       RAG_EMBEDDING_BACKEND: fastembed
       RAG_VECTOR_STORE: turbovec
-      GEMINI_MODEL: gemini-2.5-flash
-      QWEN_BASE_URL: http://host.docker.internal:11434/v1
-      QWEN_OLLAMA_BASE_URL: http://host.docker.internal:11434
-      QWEN_MODEL: qwen3:4b
-      QWEN_API_KEY: ollama
+      OPENROUTER_MODEL: google/gemma-4-26b-a4b-it:free
+      OPENROUTER_BASE_URL: https://openrouter.ai/api/v1
+      OPENROUTER_APP_TITLE: Recipe RAG Chatbot
       WEB_RECIPE_REFERENCE_DIR: /app/data/web_recipe_reference
     volumes:
       - ../data:/app/data

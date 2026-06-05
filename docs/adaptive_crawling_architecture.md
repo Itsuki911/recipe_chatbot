@@ -10,7 +10,7 @@ This architecture uses crawl4ai Adaptive Crawling to investigate a website from 
 - `crawl4ai.AsyncWebCrawler`: browser-backed page loading and text extraction.
 - `crawl4ai.AdaptiveCrawler`: query-driven crawl expansion across internal links.
 - `crawl4ai.AdaptiveConfig`: confidence, depth, page, and link-follow controls.
-- `app.llm.build_chat_llm`: Qwen by default, Gemini when configured.
+- `app.llm.build_chat_llm`: OpenRouter free model gateway.
 - `data/adaptive_crawls/<run>/knowledge_base.jsonl`: exported crawl knowledge base.
 - `data/adaptive_crawls/<run>/result.json`: metadata, relevant pages, architecture, timings, and synthesis.
 - `app.py` `Adaptive Crawl`: Streamlit UI for running and inspecting investigations.
@@ -41,16 +41,15 @@ The crawler itself uses crawl4ai's adaptive ranking and confidence model to deci
 Default:
 
 ```env
-STRUCTURED_LLM_BACKEND=qwen
-QWEN_BASE_URL=http://localhost:11434/v1
-QWEN_MODEL=qwen3:4b
+STRUCTURED_LLM_BACKEND=openrouter
+OPENROUTER_MODEL=google/gemma-4-26b-a4b-it:free
+OPENROUTER_API_KEY=...
 ```
 
-Gemini fallback:
+Free model safety:
 
 ```env
-STRUCTURED_LLM_BACKEND=gemini
-GOOGLE_API_KEY=...
+OPENROUTER_MODEL must end with :free
 ```
 
 ## Verification
@@ -61,4 +60,4 @@ Local verification should include:
 - `python -c "from app.adaptive_crawler import adaptive_architecture_preview; print(adaptive_architecture_preview()['pipeline'][0])"`
 - A small UI run with low limits, such as `max_pages=3`, `max_depth=1`, `top_k_links=1`.
 
-The last check performs real web and LLM calls, so it requires network access and a working Qwen/Ollama or Gemini backend.
+The last check performs real web and LLM calls, so it requires network access and a working OpenRouter API key.

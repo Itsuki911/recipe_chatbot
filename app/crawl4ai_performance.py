@@ -121,7 +121,7 @@ def discover_urls_for_query(search_query: str, max_results: int = 5) -> list[str
 
 
 def select_best_url(user_request: str, search_query: str, candidate_urls: list[str]) -> str:
-    # Gemini quotaを節約するため、URL選択はLLMではなく軽いスコア式にします。
+    # OpenRouter free modelのリクエスト数を節約するため、URL選択はLLMではなく軽いスコア式にします。
     # LLMは「検索クエリ作成」と「crawl4ai LLM抽出」で使います。
     if not candidate_urls:
         raise RuntimeError("No candidate URLs were found for the generated search query.")
@@ -165,9 +165,14 @@ async def crawl_and_extract_with_llm(url: str, user_request: str) -> tuple[str, 
     from crawl4ai import AsyncWebCrawler, BrowserConfig, CacheMode, CrawlerRunConfig, LLMConfig
     from crawl4ai import LLMExtractionStrategy
 
+    from app.openrouter import validate_free_openrouter_model
+
     provider = config.CRAWL4AI_LLM_PROVIDER
-    api_token = None if provider.startswith("ollama/") else config.GOOGLE_API_KEY
-    base_url = config.QWEN_OLLAMA_BASE_URL if provider.startswith("ollama/") else None
+    model_id = provider.removeprefix("openrouter/")
+    validate_free_openrouter_model(model_id)
+    provider = f"openrouter/{model_id}"
+    api_token = config.OPENROUTER_API_KEY
+    base_url = None
     llm_strategy = LLMExtractionStrategy(
         llm_config=LLMConfig(provider=provider, api_token=api_token, base_url=base_url),
         schema=CrawlFinding.model_json_schema(),
@@ -175,6 +180,7 @@ async def crawl_and_extract_with_llm(url: str, user_request: str) -> tuple[str, 
         instruction=(
             "Extract information that answers the user's request. "
             "Return valid JSON matching the schema. "
+            "Write all user-facing JSON string values in the same language as the user's request unless they ask otherwise. "
             f"User request: {user_request}"
         ),
         chunk_token_threshold=1200,

@@ -48,9 +48,7 @@ JOC_RECIPE_URLS = getattr(
 JOC_START_URL = getattr(app_config, "JOC_START_URL", "https://www.justonecookbook.com/")
 LOCAL_RECIPE_DIR = getattr(app_config, "LOCAL_RECIPE_DIR", DATA_DIR / "joc_pages")
 WEB_RECIPE_REFERENCE_DIR = getattr(app_config, "WEB_RECIPE_REFERENCE_DIR", DATA_DIR / "web_recipe_reference")
-GOOGLE_API_KEY = getattr(app_config, "GOOGLE_API_KEY", None)
-GEMINI_MODEL = getattr(app_config, "GEMINI_MODEL", "gemini-2.5-flash")
-RAG_LLM_BACKEND = getattr(app_config, "RAG_LLM_BACKEND", "qwen")
+RAG_LLM_BACKEND = getattr(app_config, "RAG_LLM_BACKEND", "openrouter")
 RAG_EMBEDDING_BACKEND = getattr(app_config, "RAG_EMBEDDING_BACKEND", "fastembed")
 RAG_VECTOR_STORE = getattr(app_config, "RAG_VECTOR_STORE", "turbovec")
 TURBOVEC_BIT_WIDTH = getattr(app_config, "TURBOVEC_BIT_WIDTH", 4)
@@ -93,8 +91,7 @@ class LocalHuggingFaceRecipeLLM(LLM):
         except ImportError as exc:
             raise RuntimeError(
                 "Local Hugging Face backend is not installed. "
-                "Use RAG_LLM_BACKEND=qwen with Ollama, RAG_LLM_BACKEND=gemini with GOOGLE_API_KEY, "
-                "or install the full requirements.txt."
+                "Use the OpenRouter backend, or install the full requirements.txt."
             ) from exc
 
         try:
@@ -133,7 +130,7 @@ class LocalHuggingFaceRecipeLLM(LLM):
                 )
                 raise RuntimeError(
                     f"Failed to load local Hugging Face model `{self.model_id}`."
-                    f"{accelerate_note} Set GOOGLE_API_KEY in .env to use Gemini, "
+                    f"{accelerate_note} Use the OpenRouter backend, "
                     "or use the Docker environment documented in README.md."
                 ) from causal_exc
 
@@ -311,17 +308,6 @@ def get_embeddings():
             cache_dir=str(FASTEMBED_CACHE_DIR),
         )
 
-    if RAG_EMBEDDING_BACKEND == "gemini":
-        # Gemini embeddingを選んだ場合はAPIキーが必要です。
-        if not GOOGLE_API_KEY:
-            raise RuntimeError(
-                "Gemini embeddings are selected, but GOOGLE_API_KEY is not set. "
-                "This project defaults to free local FastEmbed embeddings; use RAG_EMBEDDING_BACKEND=fastembed."
-            )
-        from langchain_google_genai import GoogleGenerativeAIEmbeddings
-
-        return GoogleGenerativeAIEmbeddings(model="models/text-embedding-004", google_api_key=GOOGLE_API_KEY)
-
     try:
         # 互換用のHugging Face embedding backendです。Dockerでは通常使いません。
         from langchain_huggingface import HuggingFaceEmbeddings
@@ -386,12 +372,12 @@ def build_or_load_vector_store(
 
 
 def build_llm(llm_backend: str | None = None):
-    # 回答生成モデルを選びます。デフォルトはQwenです。Geminiは明示選択時に使えます。
-    selected_backend = (llm_backend or RAG_LLM_BACKEND or "qwen").lower()
-    if selected_backend in {"qwen", "ollama", "gemini", "google"}:
+    # 回答生成モデルはOpenRouter free modelに統一します。
+    selected_backend = (llm_backend or RAG_LLM_BACKEND or "openrouter").lower()
+    if selected_backend in {"openrouter", "openrouter_free", "free"}:
         return build_chat_llm(selected_backend, temperature=0.1)
 
-    return LocalHuggingFaceRecipeLLM(model_id=HF_MODEL_ID)
+    raise RuntimeError(f"Unsupported LLM backend: {selected_backend}. Use openrouter.")
 
 
 def format_docs(docs: list[Document]) -> str:
@@ -425,7 +411,7 @@ Rules:
 - Include ingredients, clear steps, and practical cooking notes.
 - Explain relevant differences from similar Japanese dishes when useful.
 - Mention source URLs briefly at the end.
-- Answer in the same language as the user's question unless they ask otherwise.
+- Detect the user's language from their latest question and answer in that same language unless they ask otherwise.
 - Use the user's long-term memory only for preferences, dietary constraints, and continuity.
 
 Long-term user memory:
@@ -442,10 +428,58 @@ Context:
             stop_after_attempt=3,
             wait_exponential_jitter=True,
         )
+        self.context_assessment_chain = (
+            ChatPromptTemplate.from_messages(
+                [
+                    (
+                        "system",
+                        """Decide whether the retrieved recipe context contains enough directly relevant information to answer the user's request.
+Return only YES or NO.
 
-    def answer(self, question: str, user_id: str | None = None) -> RAGResponse:
-        # 1. 質問に近いレシピチャンクを検索します。
-        docs = self.retriever.invoke(question)
+Return NO when the context is about a different recipe, only a loosely related recipe, or lacks the requested dish's core ingredients and steps.""",
+                    ),
+                    ("human", "Question:\n{question}\n\nRetrieved context:\n{context}"),
+                ]
+            )
+            | self.llm
+            | StrOutputParser()
+        ).with_retry(stop_after_attempt=3, wait_exponential_jitter=True)
+        self.model_knowledge_chain = (
+            ChatPromptTemplate.from_messages(
+                [
+                    (
+                        "system",
+                        """You are a recipe inference assistant specializing in Japanese home cooking.
+Answer from your own general cooking knowledge without using retrieved documents.
+
+Rules:
+- Detect the user's language from their latest question and answer in that same language unless they ask otherwise.
+- Be clear when the answer is based on general model knowledge rather than the local recipe database.
+- Include ingredients, clear steps, and practical cooking notes.
+- Do not include hidden reasoning, chain-of-thought, or <think> blocks in the answer.""",
+                    ),
+                    ("human", "{question}"),
+                ]
+            )
+            | self.llm
+            | StrOutputParser()
+        ).with_retry(stop_after_attempt=3, wait_exponential_jitter=True)
+
+    def retrieve(self, question: str) -> list[Document]:
+        return self.retriever.invoke(question)
+
+    def has_sufficient_context(self, question: str, docs: list[Document]) -> bool:
+        if not docs:
+            return False
+        assessment = self.context_assessment_chain.invoke(
+            {
+                "question": question,
+                "context": format_docs(docs),
+            }
+        )
+        return strip_hidden_reasoning(str(assessment)).strip().upper().startswith("YES")
+
+    def answer_from_docs(self, question: str, docs: list[Document], user_id: str | None = None) -> RAGResponse:
         # 2. 過去の会話から、好みや制約に関係するメモリを検索します。
         memory = self.memory.search(question, user_id=user_id)
         # 3. RAG文脈 + メモリ + 質問をLLMへ渡して回答を生成します。
@@ -462,3 +496,14 @@ Context:
         # 5. UIで根拠を表示できるようにsource一覧を返します。
         sources = sorted({doc.metadata.get("source", "") for doc in docs if doc.metadata.get("source")})
         return RAGResponse(answer=answer, sources=sources)
+
+    def answer_from_model_knowledge(self, question: str, user_id: str | None = None) -> RAGResponse:
+        answer = self.model_knowledge_chain.invoke({"question": question})
+        answer = strip_hidden_reasoning(str(answer))
+        self.memory.add_interaction(question, answer, user_id=user_id)
+        return RAGResponse(answer=answer, sources=[])
+
+    def answer(self, question: str, user_id: str | None = None) -> RAGResponse:
+        # 1. 質問に近いレシピチャンクを検索します。
+        docs = self.retrieve(question)
+        return self.answer_from_docs(question, docs, user_id=user_id)
