@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from datetime import datetime
 from pathlib import Path
 
 import streamlit as st
@@ -407,7 +408,7 @@ def ensure_rag_chatbot_capabilities(chatbot, reload_chatbot):
 
 
 def persist_current_conversation(*, ai_type: str, messages_key: str, conversation_key: str) -> None:
-    from app.database import save_chat_conversation
+    from app.database import save_chat_conversation, save_chat_conversation_fallback
 
     try:
         conversation_id = save_chat_conversation(
@@ -419,16 +420,36 @@ def persist_current_conversation(*, ai_type: str, messages_key: str, conversatio
     except Exception as exc:
         log_error("Chat conversation PostgreSQL save", exc, details=f"ai_type={ai_type}")
         st.session_state.conversation_save_error = str(exc)
+        current_id = st.session_state.get(conversation_key)
+        fallback_id = save_chat_conversation_fallback(
+            ai_type=ai_type,
+            messages=st.session_state.get(messages_key, []),
+            conversation_id=str(current_id) if str(current_id).startswith("local-") else None,
+        )
+        st.session_state[conversation_key] = fallback_id
 
 
 def render_past_conversation() -> None:
-    from app.database import fetch_chat_conversation, fetch_chat_conversations
+    from app.database import (
+        fetch_chat_conversation,
+        fetch_chat_conversation_fallback,
+        fetch_chat_conversations,
+        fetch_chat_conversations_fallback,
+    )
 
     st.subheader("past conversation")
     selected_id = st.session_state.get("selected_conversation_id")
 
     if selected_id:
-        conversation = fetch_chat_conversation(int(selected_id))
+        conversation = None
+        try:
+            if str(selected_id).startswith("local-"):
+                conversation = fetch_chat_conversation_fallback(str(selected_id))
+            else:
+                conversation = fetch_chat_conversation(int(selected_id))
+        except Exception as exc:
+            log_error("Past conversation detail", exc, details=f"conversation_id={selected_id}")
+            conversation = fetch_chat_conversation_fallback(str(selected_id))
         if not conversation:
             st.warning("選択した会話が見つかりませんでした。")
             if st.button("一覧に戻る"):
@@ -445,6 +466,8 @@ def render_past_conversation() -> None:
         col_date.metric("Date", created_at)
         col_label.metric("Conversation", f"conversation{conversation['id']}")
         col_ai.metric("AI", conversation["ai_type"])
+        if conversation.get("storage") == "local_fallback":
+            st.caption("PostgreSQLに接続できなかったため、ローカル退避履歴から表示しています。")
         st.divider()
 
         for message in conversation.get("messages") or []:
@@ -460,10 +483,30 @@ def render_past_conversation() -> None:
         conversations = fetch_chat_conversations()
     except Exception as exc:
         log_error("Past conversation list", exc)
-        st.error("過去会話をDBから読み込めませんでした。")
-        with st.expander("エラー詳細"):
-            st.code(str(exc))
-        return
+        conversations = fetch_chat_conversations_fallback()
+        if conversations:
+            st.warning("PostgreSQLに接続できないため、ローカル退避履歴を表示しています。")
+            with st.expander("DB接続エラー"):
+                st.code(str(exc))
+        else:
+            st.error("過去会話をDBから読み込めませんでした。")
+            st.info("PostgreSQLを起動するか、チャットを実行してローカル退避履歴を作成してください。")
+            with st.expander("エラー詳細"):
+                st.code(str(exc))
+            return
+    else:
+        fallback_conversations = fetch_chat_conversations_fallback()
+        if fallback_conversations:
+            conversations = conversations + [
+                item
+                for item in fallback_conversations
+                if str(item.get("id")) not in {str(conversation.get("id")) for conversation in conversations}
+            ]
+            conversations = sorted(
+                conversations,
+                key=lambda item: item.get("created_at") or item.get("updated_at") or datetime.min,
+                reverse=True,
+            )
 
     if not conversations:
         st.info("保存済みの会話はまだありません。")
@@ -476,6 +519,8 @@ def render_past_conversation() -> None:
             col_date.markdown(f"**Date**  \n{created_at}")
             col_label.markdown(f"**Conversation**  \nconversation{conversation['id']}")
             col_ai.markdown(f"**AI**  \n{conversation['ai_type']}")
+            if conversation.get("storage") == "local_fallback":
+                st.caption("local fallback")
             if st.button("この会話を見る", key=f"view_conversation_{conversation['id']}", use_container_width=True):
                 st.session_state.selected_conversation_id = conversation["id"]
                 st.rerun()

@@ -1,16 +1,19 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 from sqlalchemy import Column, DateTime, Integer, MetaData, String, Table, Text, create_engine, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.engine import Engine
 
-from app.config import DATABASE_URL
+from app.config import DATABASE_URL, DATA_DIR
 
 # SQLAlchemy Coreでは、MetaDataにテーブル定義を集めてから create_all でDBへ反映します。
 metadata = MetaData()
+CHAT_CONVERSATION_FALLBACK_PATH = DATA_DIR / "chat_conversations_fallback.jsonl"
 
 # JSON生成したレシピ提案を保存するテーブルです。
 # ingredients や steps はリスト構造を保ちたいので PostgreSQL の JSONB を使います。
@@ -147,6 +150,116 @@ def save_chat_conversation(
             },
         )
         return int(result.scalar_one())
+
+
+def _normalize_chat_messages(messages: list[dict[str, Any]]) -> list[dict[str, str]]:
+    return [
+        {
+            "role": str(message.get("role", "")),
+            "content": str(message.get("content", "")),
+        }
+        for message in messages
+        if message.get("role") and message.get("content")
+    ]
+
+
+def save_chat_conversation_fallback(
+    *,
+    ai_type: str,
+    messages: list[dict[str, Any]],
+    conversation_id: str | None = None,
+    path: Path = CHAT_CONVERSATION_FALLBACK_PATH,
+) -> str:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    now = datetime.utcnow()
+    normalized_messages = _normalize_chat_messages(messages)
+    existing = fetch_chat_conversations_fallback(path=path)
+    if conversation_id:
+        local_id = conversation_id
+    else:
+        local_id = f"local-{int(now.timestamp() * 1000)}"
+
+    payload = {
+        "id": local_id,
+        "ai_type": ai_type,
+        "messages": normalized_messages,
+        "raw_json": {"ai_type": ai_type, "messages": normalized_messages},
+        "created_at": now.isoformat(),
+        "updated_at": now.isoformat(),
+        "storage": "local_fallback",
+    }
+    updated: list[dict[str, Any]] = []
+    replaced = False
+    for item in existing:
+        if str(item.get("id")) == local_id:
+            payload["created_at"] = _serialize_datetime(item.get("created_at")) or payload["created_at"]
+            updated.append(payload)
+            replaced = True
+        else:
+            updated.append(_serialize_conversation(item))
+    if not replaced:
+        updated.append(payload)
+
+    with path.open("w", encoding="utf-8") as file:
+        for item in updated:
+            file.write(json.dumps(item, ensure_ascii=False) + "\n")
+    return local_id
+
+
+def _parse_datetime(value: Any) -> datetime | None:
+    if isinstance(value, datetime):
+        return value
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value))
+    except ValueError:
+        return None
+
+
+def _serialize_datetime(value: Any) -> str | None:
+    parsed = _parse_datetime(value)
+    return parsed.isoformat() if parsed else None
+
+
+def _serialize_conversation(item: dict[str, Any]) -> dict[str, Any]:
+    payload = dict(item)
+    payload["created_at"] = _serialize_datetime(payload.get("created_at")) or datetime.utcnow().isoformat()
+    payload["updated_at"] = _serialize_datetime(payload.get("updated_at")) or payload["created_at"]
+    return payload
+
+
+def fetch_chat_conversations_fallback(path: Path = CHAT_CONVERSATION_FALLBACK_PATH) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    conversations: list[dict[str, Any]] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            item = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(item, dict):
+            continue
+        item["created_at"] = _parse_datetime(item.get("created_at"))
+        item["updated_at"] = _parse_datetime(item.get("updated_at"))
+        conversations.append(item)
+    return sorted(
+        conversations,
+        key=lambda item: item.get("created_at") or datetime.min,
+        reverse=True,
+    )
+
+
+def fetch_chat_conversation_fallback(
+    conversation_id: str,
+    path: Path = CHAT_CONVERSATION_FALLBACK_PATH,
+) -> dict[str, Any] | None:
+    for conversation in fetch_chat_conversations_fallback(path=path):
+        if str(conversation.get("id")) == str(conversation_id):
+            return conversation
+    return None
 
 
 def fetch_chat_conversations(engine: Engine | None = None) -> list[dict[str, Any]]:
