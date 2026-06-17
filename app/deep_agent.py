@@ -219,6 +219,24 @@ def _save_reference_page(url: str, html: str, text: str, output_dir: Path = WEB_
     return SavedPage(url=url, path=text_path, title=title, text_chars=len(text))
 
 
+def _fetch_reference_page_fallback(url: str) -> SavedPage | None:
+    try:
+        response = requests.get(url, headers=_headers(), timeout=30)
+        response.raise_for_status()
+    except Exception:
+        return None
+
+    html = response.text
+    soup = bs4.BeautifulSoup(html, "html.parser")
+    for node in soup(["script", "style", "noscript", "svg"]):
+        node.decompose()
+    content = soup.select_one("article") or soup.select_one("main") or soup.body or soup
+    text = re.sub(r"\n{3,}", "\n\n", content.get_text("\n", strip=True)).strip()
+    if len(text) < 500:
+        return None
+    return _save_reference_page(url, html, text)
+
+
 async def _agentic_crawl_seed(
     *,
     seed_url: str,
@@ -309,6 +327,18 @@ async def _run_agentic_crawler(query: str, max_pages: int) -> DeepAgentResult:
             errors.append(f"{seed_url}: {type(exc).__name__}: {exc}")
         if len(saved_pages) >= max_pages:
             break
+
+    if not saved_pages:
+        fallback_urls: list[str] = []
+        for url in [*selected_urls, *candidate_urls]:
+            if url not in fallback_urls:
+                fallback_urls.append(url)
+        for url in fallback_urls:
+            page = _fetch_reference_page_fallback(url)
+            if page and page.url not in {saved.url for saved in saved_pages}:
+                saved_pages.append(page)
+            if len(saved_pages) >= max_pages:
+                break
 
     if not saved_pages:
         detail = "\n".join(errors[:5]) if errors else "No crawl results had enough text to save."

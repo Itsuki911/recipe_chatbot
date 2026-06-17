@@ -46,8 +46,29 @@ def log_error(context: str, error: BaseException, details: str | None = None) ->
         if details:
             entry.extend(["", "### Details", "", "```text", details.strip(), "```"])
         entry.extend(["", "### Traceback", "", "```text", "".join(traceback.format_exception(error)).strip(), "```", ""])
+        entry_text = "\n".join(entry)
         with ERROR_LOG_PATH.open("a", encoding="utf-8") as file:
-            file.write("\n".join(entry))
+            file.write(entry_text)
+        _sync_error_log_to_gcs(entry_text)
     except Exception:
         # Error logging must never break the user-facing app flow.
+        return
+
+
+def _sync_error_log_to_gcs(entry_text: str) -> None:
+    try:
+        from app.gcs_storage import download_text, is_enabled, upload_text
+
+        if not is_enabled():
+            return
+        object_name = "ERROR_LOG.md"
+        try:
+            existing = download_text(object_name)
+        except FileNotFoundError:
+            existing = (
+                "# Error Log\n\n"
+                "This Cloud Storage copy is appended by the Cloud Run app.\n\n"
+            )
+        upload_text(object_name, existing.rstrip() + "\n\n" + entry_text, content_type="text/markdown; charset=utf-8")
+    except Exception:
         return

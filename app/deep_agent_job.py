@@ -58,6 +58,16 @@ def main(argv: list[str] | None = None) -> int:
     try:
         result = run_deep_agent_recipe_collection_with_details(query, max_pages=max_pages)
     except Exception as exc:
+        try:
+            from app.error_logger import log_error
+
+            log_error(
+                "Deep Agent Cloud Run Job",
+                exc,
+                details=f"request_id={request_id}, query={query}, max_pages={max_pages}",
+            )
+        except Exception:
+            pass
         _write_status(
             request_id,
             {

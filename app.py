@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import streamlit as st
 
@@ -229,6 +230,34 @@ def render_sidebar() -> tuple[bool, str]:
                 st.caption(f"Cloud Storage: `gs://{GCS_BUCKET}`")
             if CLOUD_RUN_DEEP_AGENT_JOB:
                 st.caption(f"Cloud Run Job: `{CLOUD_RUN_DEEP_AGENT_JOB}`")
+            sidebar_job = st.session_state.get("sidebar_deep_agent_job")
+            if sidebar_job and GCS_BUCKET:
+                from app.gcs_storage import download_json, gcs_uri
+
+                status_object = f"results/{sidebar_job['request_id']}/status.json"
+                st.caption(f"Latest job status: `{gcs_uri(status_object)}`")
+                if st.button("Deep Agent Job状態を更新", use_container_width=True):
+                    try:
+                        status = download_json(status_object)
+                    except FileNotFoundError:
+                        st.info("Job statusはまだ作成されていません。少し待ってください。")
+                    except Exception as exc:
+                        log_error("Sidebar Deep Agent Job status", exc, details=f"request_id={sidebar_job['request_id']}")
+                        st.error("Job statusを読み込めませんでした。")
+                        st.code(str(exc))
+                    else:
+                        st.json(status)
+                        if status.get("status") == "succeeded":
+                            load_chatbot.clear()
+                            st.session_state.rebuild_index_next = True
+                            st.success("Deep Agent Jobが完了しました。次回Chat/JSON実行時にRAGインデックスを再作成します。")
+                        elif status.get("status") == "failed":
+                            log_error(
+                                "Sidebar Deep Agent Job failed",
+                                RuntimeError(str(status.get("error") or "Deep Agent Job failed.")),
+                                details=f"request_id={sidebar_job['request_id']}\nstatus={status}",
+                            )
+                            st.error("Deep Agent Jobが失敗しました。")
             deep_query = st.text_input("収集したいレシピ/調査テーマ", placeholder="omurice recipe technique and variations")
             deep_max_pages = st.slider("最大保存ページ数", min_value=1, max_value=5, value=3)
             if st.button("Deep Agentで収集", use_container_width=True, disabled=deep_agent_unavailable):
@@ -260,6 +289,10 @@ def render_sidebar() -> tuple[bool, str]:
                                 st.success("Cloud Run Jobを開始しました。")
                                 st.caption(f"request_id: `{request_id}`")
                                 st.caption(f"status: `{gcs_uri(f'results/{request_id}/status.json')}`")
+                                st.session_state.sidebar_deep_agent_job = {
+                                    "request_id": request_id,
+                                    "query": deep_query,
+                                }
                                 with st.expander("Cloud Run operation"):
                                     st.json(operation)
                                 return force_rebuild, mode
@@ -425,8 +458,142 @@ def deep_agent_offer_message(question: str) -> str:
         "ローカルのベクトルDBには、この質問へ直接答えるのに十分な情報が見つかりませんでした。\n\n"
         "Deep Agentで対象レシピの情報をWebから探して保存し、RAGインデックスを更新してから回答しますか？\n\n"
         f"対象: {question}\n\n"
-        "Yes / No で答えてください。YesならDeep Agentを実行し、NoならLLM自身の一般知識で回答します。"
+        "許可する場合は「Deep Agentを実行」、許可しない場合は「実行しない」を押してください。"
     )
+
+
+def deep_agent_denied_message(question: str) -> str:
+    return (
+        "Deep Agentの実行が許可されなかったため、この会話はここで終了します。\n\n"
+        "現在のRAGデータでは、この質問に十分な根拠を持って回答できません。\n"
+        "正確なレシピ提案を行うには、Deep Agentによる自動データ収集をおすすめします。\n\n"
+        f"対象: {question}"
+    )
+
+
+def render_deep_agent_permission_buttons(question: str, *, key_prefix: str) -> None:
+    col_allow, col_deny = st.columns(2)
+    if col_allow.button("Deep Agentを実行", type="primary", key=f"{key_prefix}_allow"):
+        st.session_state.openrouter_pending_task = {
+            "type": "openrouter_rag_deep_agent_choice",
+            "question": question,
+            "choice": True,
+        }
+        st.session_state.openrouter_rag_deep_agent_pending = None
+        st.rerun()
+    if col_deny.button("実行しない", key=f"{key_prefix}_deny"):
+        st.session_state.openrouter_pending_task = {
+            "type": "openrouter_rag_deep_agent_choice",
+            "question": question,
+            "choice": False,
+        }
+        st.session_state.openrouter_rag_deep_agent_pending = None
+        st.rerun()
+
+
+def start_cloud_deep_agent_collection(question: str, max_pages: int = 3) -> str:
+    from app.cloud_run_jobs import run_deep_agent_job
+    from app.gcs_storage import upload_json
+
+    request_id = str(uuid.uuid4())
+    request_object = f"requests/{request_id}.json"
+    upload_json(
+        request_object,
+        {
+            "request_id": request_id,
+            "query": question,
+            "max_pages": max_pages,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        },
+    )
+    run_deep_agent_job(request_object=request_object, query=question, max_pages=max_pages)
+    return request_id
+
+
+def maybe_start_cloud_deep_agent(question: str, max_pages: int = 3) -> str | None:
+    if not (GCS_BUCKET and CLOUD_RUN_DEEP_AGENT_JOB):
+        return None
+    return start_cloud_deep_agent_collection(question, max_pages=max_pages)
+
+
+def render_pending_deep_agent_job() -> bool:
+    pending_job = st.session_state.get("openrouter_rag_deep_agent_job")
+    if not pending_job:
+        return False
+
+    from app.gcs_storage import download_json, gcs_uri
+
+    question = pending_job["question"]
+    request_id = pending_job["request_id"]
+    status_object = f"results/{request_id}/status.json"
+    st.info("Deep AgentのCloud Run Jobを実行中です。完了後にRAGインデックスを再作成して回答します。")
+    st.caption(f"Status: `{gcs_uri(status_object)}`")
+
+    if not st.button("状態を更新して回答を続ける", type="primary", key=f"refresh_deep_agent_job_{request_id}"):
+        return True
+
+    try:
+        status = download_json(status_object)
+    except FileNotFoundError:
+        st.warning("Job statusはまだ作成されていません。少し待ってから再度更新してください。")
+        return True
+    except Exception as exc:
+        log_error("Deep Agent Cloud Run Job status read", exc, details=f"request_id={request_id}")
+        st.error("Deep Agent Jobの状態を読み込めませんでした。")
+        st.code(str(exc))
+        return True
+
+    job_status = str(status.get("status", "unknown"))
+    if job_status == "running":
+        st.info("Deep Agentはまだ実行中です。少し待ってから再度更新してください。")
+        return True
+    if job_status == "failed":
+        exc = RuntimeError(str(status.get("error") or "Deep Agent Job failed."))
+        log_error("Deep Agent Cloud Run Job failed", exc, details=f"request_id={request_id}\nstatus={status}")
+        st.session_state.openrouter_rag_deep_agent_job = None
+        message = "Deep Agent Jobが失敗しました。設定を確認してから、もう一度データ収集を実行してください。"
+        st.error(message)
+        st.code(str(status.get("error") or status))
+        st.session_state.messages.append({"role": "assistant", "content": message})
+        persist_current_conversation(
+            ai_type="OpenRouter_RAG",
+            messages_key="messages",
+            conversation_key="openrouter_rag_conversation_id",
+        )
+        return True
+    if job_status != "succeeded":
+        st.warning(f"未知のJob状態です: {job_status}")
+        st.json(status)
+        return True
+
+    try:
+        with st.spinner("収集済みデータからRAGインデックスを再作成し、回答を生成しています..."):
+            load_chatbot.clear()
+            chatbot = ensure_rag_chatbot_capabilities(
+                load_chatbot(True, "openrouter"),
+                lambda: load_chatbot(True, "openrouter"),
+            )
+            response = chatbot.answer(question)
+    except Exception as exc:
+        log_error("Deep Agent Cloud Run Job post-processing", exc, details=f"request_id={request_id}, question={question}")
+        st.error("Deep Agent収集後のRAG回答生成に失敗しました。")
+        st.code(str(exc))
+        return True
+
+    prefix = f"Deep Agentで{len(status.get('saved_pages') or [])}件の参照を保存しました。\n\n"
+    with st.chat_message("assistant"):
+        st.markdown(prefix + response.answer)
+        render_sources(response.sources)
+    st.session_state.messages.append({"role": "assistant", "content": prefix + response.answer})
+    st.session_state.rebuild_index_next = False
+    st.session_state.openrouter_rag_deep_agent_job = None
+    persist_current_conversation(
+        ai_type="OpenRouter_RAG",
+        messages_key="messages",
+        conversation_key="openrouter_rag_conversation_id",
+    )
+    st.rerun()
+    return True
 
 
 def run_chat_deep_agent_answer(
@@ -436,6 +603,14 @@ def run_chat_deep_agent_answer(
     load_current_chatbot,
 ):
     from app.deep_agent import run_deep_agent_recipe_collection_with_details
+
+    cloud_request_id = maybe_start_cloud_deep_agent(question, max_pages=3)
+    if cloud_request_id:
+        st.session_state.openrouter_rag_deep_agent_job = {
+            "question": question,
+            "request_id": cloud_request_id,
+        }
+        return None, None
 
     result = run_deep_agent_recipe_collection_with_details(question, max_pages=3)
     load_chatbot.clear()
@@ -480,6 +655,22 @@ def show_postgres_recovery_hint() -> None:
     st.caption("DBを使わず続ける場合は、会話はローカル退避履歴に保存されます。")
 
 
+def format_display_datetime(value) -> str:
+    if not value:
+        return "-"
+    if isinstance(value, str):
+        try:
+            value = datetime.fromisoformat(value)
+        except ValueError:
+            return value
+    if not isinstance(value, datetime):
+        return str(value)
+    # Database rows are stored as UTC-naive datetimes. Display them in JST.
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.astimezone(ZoneInfo("Asia/Tokyo")).strftime("%Y-%m-%d %H:%M JST")
+
+
 def render_past_conversation() -> None:
     from app.database import (
         fetch_chat_conversation,
@@ -512,7 +703,7 @@ def render_past_conversation() -> None:
             st.session_state.selected_conversation_id = None
             st.rerun()
 
-        created_at = conversation["created_at"].strftime("%Y-%m-%d %H:%M") if conversation.get("created_at") else "-"
+        created_at = format_display_datetime(conversation.get("created_at"))
         col_date, col_label, col_ai = st.columns(3)
         col_date.metric("Date", created_at)
         col_label.metric("Conversation", f"conversation{conversation['id']}")
@@ -566,7 +757,7 @@ def render_past_conversation() -> None:
         return
 
     for conversation in conversations:
-        created_at = conversation["created_at"].strftime("%Y-%m-%d %H:%M") if conversation.get("created_at") else "-"
+        created_at = format_display_datetime(conversation.get("created_at"))
         with st.container():
             col_date, col_label, col_ai = st.columns(3)
             col_date.markdown(f"**Date**  \n{created_at}")
@@ -592,6 +783,14 @@ def render_openrouter_rag_chat(force_rebuild: bool) -> None:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
+    if render_pending_deep_agent_job():
+        return
+
+    pending_permission = st.session_state.get("openrouter_rag_deep_agent_pending")
+    if pending_permission:
+        render_deep_agent_permission_buttons(pending_permission["question"], key_prefix="rag_pending_deep_agent")
+        return
+
     pending_task = st.session_state.get("openrouter_pending_task")
     if pending_task and pending_task.get("type") in {"openrouter_rag", "openrouter_rag_deep_agent_choice"}:
         if pending_task.get("needs_model_switch"):
@@ -605,43 +804,16 @@ def render_openrouter_rag_chat(force_rebuild: bool) -> None:
         task_type = "openrouter_rag"
         choice = None
 
-    pending = st.session_state.get("openrouter_rag_deep_agent_pending")
     if question is None and (user_text := st.chat_input("例: 豚汁の材料と作り方、普通の味噌汁との違いを教えて")):
-        if pending:
-            st.session_state.messages.append({"role": "user", "content": user_text})
-            persist_current_conversation(
-                ai_type="OpenRouter_RAG",
-                messages_key="messages",
-                conversation_key="openrouter_rag_conversation_id",
-            )
-            with st.chat_message("user"):
-                st.markdown(user_text)
-            parsed_choice = parse_yes_no(user_text)
-            if parsed_choice is None:
-                message = "Yes / No で答えてください。YesならDeep Agentで探し、NoならLLM自身の一般知識で回答します。"
-                with st.chat_message("assistant"):
-                    st.markdown(message)
-                st.session_state.messages.append({"role": "assistant", "content": message})
-                persist_current_conversation(
-                    ai_type="OpenRouter_RAG",
-                    messages_key="messages",
-                    conversation_key="openrouter_rag_conversation_id",
-                )
-                st.stop()
-            question = pending["question"]
-            choice = parsed_choice
-            task_type = "openrouter_rag_deep_agent_choice"
-            st.session_state.openrouter_rag_deep_agent_pending = None
-        else:
-            question = user_text
-            st.session_state.messages.append({"role": "user", "content": question})
-            persist_current_conversation(
-                ai_type="OpenRouter_RAG",
-                messages_key="messages",
-                conversation_key="openrouter_rag_conversation_id",
-            )
-            with st.chat_message("user"):
-                st.markdown(question)
+        question = user_text
+        st.session_state.messages.append({"role": "user", "content": question})
+        persist_current_conversation(
+            ai_type="OpenRouter_RAG",
+            messages_key="messages",
+            conversation_key="openrouter_rag_conversation_id",
+        )
+        with st.chat_message("user"):
+            st.markdown(question)
 
     if question is None:
         return
@@ -656,15 +828,20 @@ def render_openrouter_rag_chat(force_rebuild: bool) -> None:
                             force_rebuild=True,
                             load_current_chatbot=lambda rebuild: load_chatbot(rebuild, "openrouter"),
                         )
+                    if result is None and response is None:
+                        st.info("Deep Agent Cloud Run Jobを開始しました。完了後に「状態を更新して回答を続ける」を押してください。")
+                        st.stop()
                     prefix = f"Deep Agentで{len(result.saved_pages)}件の参照を保存しました。\n\n"
                 else:
-                    chatbot = ensure_rag_chatbot_capabilities(
-                        load_chatbot(False, "openrouter"),
-                        lambda: load_chatbot(False, "openrouter"),
+                    denial = deep_agent_denied_message(question)
+                    st.markdown(denial)
+                    st.session_state.messages.append({"role": "assistant", "content": denial})
+                    persist_current_conversation(
+                        ai_type="OpenRouter_RAG",
+                        messages_key="messages",
+                        conversation_key="openrouter_rag_conversation_id",
                     )
-                    with st.spinner("OpenRouter free model自身の一般知識で回答を作成中..."):
-                        response = chatbot.answer_from_model_knowledge(question)
-                    prefix = "ローカルRAGではなく、OpenRouter free model自身の一般知識で回答します。\n\n"
+                    st.stop()
             except Exception as exc:
                 defer_for_openrouter_model_switch(
                     exc,
@@ -697,7 +874,17 @@ def render_openrouter_rag_chat(force_rebuild: bool) -> None:
 
     should_rebuild = force_rebuild or st.session_state.get("rebuild_index_next", False)
     if not recipe_knowledge_ready(should_rebuild):
-        show_missing_recipe_data_message()
+        message = deep_agent_offer_message(question)
+        with st.chat_message("assistant"):
+            st.markdown(message)
+            render_deep_agent_permission_buttons(question, key_prefix="rag_missing_data")
+        st.session_state.openrouter_rag_deep_agent_pending = {"question": question}
+        st.session_state.messages.append({"role": "assistant", "content": message})
+        persist_current_conversation(
+            ai_type="OpenRouter_RAG",
+            messages_key="messages",
+            conversation_key="openrouter_rag_conversation_id",
+        )
         st.stop()
     try:
         chatbot = load_chatbot(should_rebuild, "openrouter")
@@ -718,6 +905,7 @@ def render_openrouter_rag_chat(force_rebuild: bool) -> None:
             if not has_context:
                 message = deep_agent_offer_message(question)
                 st.markdown(message)
+                render_deep_agent_permission_buttons(question, key_prefix="rag_insufficient_context")
                 st.session_state.openrouter_rag_deep_agent_pending = {"question": question}
                 st.session_state.messages.append({"role": "assistant", "content": message})
                 persist_current_conversation(

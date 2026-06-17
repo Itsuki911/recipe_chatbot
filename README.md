@@ -1,24 +1,74 @@
 # Recipe Inference RAG Chatbot
 
-LangChainベースの和食レシピ推論特化RAG chatbotです。Just One CookbookをRAGの情報源にし、OpenRouter free model対応のStreamlit UI、JSON構造化出力、PostgreSQL保存、DataFrame閲覧を分離して実装しています。
+Japanese home-cooking recipe assistant built with Streamlit, LangChain, OpenRouter, Supabase Postgres, Google Cloud Run, and Cloud Storage.
+
+The app answers recipe questions with retrieval augmented generation (RAG), stores structured recipe outputs, and can run a separate Deep Agent crawler job to collect additional recipe references.
+
+## Live App
+
+Public Cloud Run deployment:
+
+```text
+https://recipe-chatbot-web-bvyktzzbcq-an.a.run.app
+```
 
 ## Features
 
-- Just One Cookbook (`https://www.justonecookbook.com/`) からレシピページを取得
-- LangChain + TurboVec + FastEmbed によるRAG
-- OpenRouter経由で `:free` モデルだけを使用
-- 429 Too Many Requests時にOpenRouter free model候補を表示し、選択後に現在のタスクを継続
-- mem0による会話のlong-term memory
-- レシピ提案をJSONとして生成
-- JSON出力をPostgreSQLのJSONBカラムに保存
-- VS Codeターミナル上でDataFrame形式のDB確認
-- StreamlitのチャットUI
-- Streamlit sidebarからレシピURLを `data/joc_pages/` に保存
-- crawl4ai Agentic CrawlerによるWeb上の関連レシピ参照の自動収集
-- crawl4ai Adaptive Crawlingによるサイト内調査、内部リンク探索、LLM統合要約
-- Figma用UI仕様: `scripts/figma_ui_spec.md`
+- Streamlit chat UI for recipe Q&A
+- RAG over saved recipe reference documents
+- OpenRouter free-model gateway with safety checks for `:free` model IDs
+- JSON structured recipe generation
+- Supabase Postgres persistence through SQLAlchemy
+- Cloud Run Service for the web app
+- Cloud Run Job for long-running Deep Agent collection
+- Cloud Storage for collected text/html references and job status files
+- Cloud Build deployment from GitHub `main`
+- Local Docker Compose development with PostgreSQL
 
-## Setup
+## Architecture
+
+```text
+GitHub main
+  -> Cloud Build
+  -> Artifact Registry
+  -> Cloud Run Service: recipe-chatbot-web
+  -> Cloud Run Job: recipe-deep-agent
+
+Cloud Run Service
+  -> OpenRouter API
+  -> Supabase Postgres
+  -> Cloud Storage
+  -> Cloud Run Job API
+
+Cloud Run Job
+  -> OpenRouter API
+  -> Web crawling
+  -> Cloud Storage
+```
+
+Cloud Run resource names for the current deployment:
+
+```text
+Project: recipe-chatbot-499108
+Region: asia-northeast1
+Service: recipe-chatbot-web
+Job: recipe-deep-agent
+Artifact Registry repo: recipe-chatbot
+Cloud Storage bucket: recipe-robot
+GCS prefix: recipe-chatbot
+```
+
+## User Workflow
+
+1. Open the Cloud Run URL.
+2. Use the chat or JSON output modes.
+3. Save recipe pages from the sidebar when a direct source URL is known.
+4. Use Deep Agent collection for broader web reference gathering.
+5. Rebuild the RAG index when new reference pages are added.
+
+Deep Agent collection can take several minutes. In Cloud Run, it is started as a Cloud Run Job instead of blocking the Streamlit process.
+
+## Local Setup
 
 ```bash
 python -m venv .venv
@@ -27,183 +77,126 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-PostgreSQLを起動し、`.env` の `DATABASE_URL` を自分の環境に合わせてください。
+Edit `.env` with local or cloud credentials.
+
+Required for OpenRouter-backed generation:
+
+```env
+OPENROUTER_API_KEY=
+OPENROUTER_MODEL=google/gemma-4-26b-a4b-it:free
+```
+
+For local PostgreSQL, use a local `DATABASE_URL`.
+
+```env
+DATABASE_URL=postgresql+psycopg2://recipe_user:recipe_password@localhost:5432/recipe_chatbot
+```
+
+Initialize tables and optionally rebuild the local RAG index:
 
 ```bash
 python scripts/init_db.py
 python scripts/rebuild_index.py
 ```
 
-If Just One Cookbook returns `403 Forbidden` to Python requests, save recipe pages from your browser into `data/joc_pages/` as `.html`, `.txt`, or `.md`, then rebuild the index:
-
-```bash
-python scripts/rebuild_index.py
-```
-
-Local files in `data/joc_pages/` are loaded before live web requests.
-
-The sidebar also includes:
-
-- `ページをdataに保存`: input a recipe URL and save it into `data/joc_pages/`
-- `Deep Agent自動収集`: ask a crawl4ai Agentic Crawler to search the web, choose seed URLs, deep-crawl relevant pages, and save references into `data/web_recipe_reference/`
-- `Adaptive Crawl`: run crawl4ai Adaptive Crawling from a start URL and synthesize the site research with OpenRouter free model
-
-Deep Agent collection uses OpenRouter free model by default and requires `OPENROUTER_API_KEY`; it may take several minutes.
-Both `data/joc_pages/` and `data/web_recipe_reference/` are loaded into the TurboVec RAG index when Chat/JSON triggers an index rebuild.
-
-## Run
+Run the app:
 
 ```bash
 streamlit run app.py
 ```
 
-## Docker
+## Docker Development
 
-Dockerを使うとPython 3.11環境に固定できるため、`deepagents` などPythonバージョン依存のあるパッケージを扱いやすくなります。Docker実行は任意です。
-Docker imageは `docker/requirements-docker.txt` を使い、OpenRouter、FastEmbed、TurboVec、mem0を同じPython 3.11環境に固定します。OpenRouterを使うには `.env` に `OPENROUTER_API_KEY` が必要です。
+Docker Compose provides a Python 3.11 app container and PostgreSQL 16.
 
 ```bash
 cp .env.example .env
 docker compose -f docker/docker-compose.yml up --build
 ```
 
-App: `http://localhost:8501`
-PostgreSQL from host tools: `localhost:5433`
-
-The Docker Compose setup includes:
-
-- `app`: Python 3.11 Streamlit app
-- `db`: PostgreSQL 16
-- Host-side PostgreSQL port is `5433` to avoid conflicts with local PostgreSQL on `5432`.
-- Docker uses `MAIN_LLM_BACKEND=openrouter`, `RAG_LLM_BACKEND=openrouter`, `DEEP_AGENT_LLM_BACKEND=openrouter`, `STRUCTURED_LLM_BACKEND=openrouter`, `RAG_EMBEDDING_BACKEND=fastembed`, and `RAG_VECTOR_STORE=turbovec`.
-- `../data:/app/data`: saved recipe pages, TurboVec index, FastEmbed cache, and mem0 persistence
-- `../ERROR_LOG.md:/app/ERROR_LOG.md`: developer error log persistence
-
-The default OpenRouter model is `google/gemma-4-26b-a4b-it:free`. Any model configured in `.env` must end with `:free`; otherwise the app raises an error before making a paid request.
-
-## Cloud Run / Supabase migration
-
-このリポジトリはCloud Run移行用に、次の構成へ対応しています。
+Local URLs:
 
 ```text
-Cloud Run Service: Streamlit web app
-Cloud Run Job: Deep Agent collection
-Cloud Storage: collected recipe text/html and job status
-Supabase Postgres: DATABASE_URL
-Secret Manager: OPENROUTER_API_KEY and DATABASE_URL
-Cloud Build: GitHub pushからbuild/deploy
+App: http://localhost:8501
+PostgreSQL from host tools: localhost:5433
 ```
 
-ローカル開発では `GCS_BUCKET` を空にすると、従来どおり `data/` 配下を使います。Cloud Runでは `GCS_BUCKET` を設定すると、`joc_pages/` と `web_recipe_reference/` の保存内容をCloud Storageにもアップロードし、RAG読み込み時にもCloud Storage上の `.html`, `.txt`, `.md` を参照します。
+The Docker setup mounts local persistence:
 
-### Required secrets
+- `data/` for saved references, TurboVec index, FastEmbed cache, and mem0 data
+- `ERROR_LOG.md` for local error logging
 
-OpenRouterとSupabaseの値はGoogle Secret Managerに保存します。実キーやDB URLをGitHubへcommitしないでください。
+## Cloud Configuration
 
-```bash
-printf '%s' 'OPENROUTER_API_KEY_VALUE' |
-gcloud secrets create openrouter-api-key --data-file=- --project recipe-chatbot-499108
+Cloud Run reads runtime secrets from Secret Manager.
 
-printf '%s' 'postgresql+psycopg2://postgres.PROJECT_REF:PASSWORD@aws-REGION.pooler.supabase.com:6543/postgres?sslmode=require' |
-gcloud secrets create supabase-database-url --data-file=- --project recipe-chatbot-499108
+Required Secret Manager entries:
+
+```text
+openrouter-api-key
+supabase-database-url
 ```
 
-既にSecretを作成済みの場合は `create` ではなく `versions add` を使います。
+`supabase-database-url` must be a PostgreSQL connection string, not the Supabase HTTP API URL. For Cloud Run, use the Supabase Transaction Pooler on port `6543`.
 
-```bash
-printf '%s' 'NEW_VALUE' |
-gcloud secrets versions add openrouter-api-key --data-file=- --project recipe-chatbot-499108
+```text
+postgresql+psycopg2://postgres.PROJECT_REF:URL_ENCODED_PASSWORD@aws-REGION.pooler.supabase.com:6543/postgres?sslmode=require
 ```
 
-SupabaseはCloud Runのような自動スケーリング環境では、基本的にTransaction Poolerの接続文字列を使います。Supabase Dashboardの `Connect` からTransaction modeを選び、SQLAlchemy用に先頭を `postgresql+psycopg2://` にします。
+Runtime environment variables:
 
-### Required Google Cloud resources
+| Variable | Purpose |
+| --- | --- |
+| `GCS_BUCKET` | Cloud Storage bucket name, for example `recipe-robot` |
+| `GCS_PREFIX` | Object prefix, currently `recipe-chatbot` |
+| `CLOUD_RUN_PROJECT_ID` | Google Cloud project ID |
+| `CLOUD_RUN_REGION` | Cloud Run region |
+| `CLOUD_RUN_DEEP_AGENT_JOB` | Cloud Run Job name |
+| `MEM0_ENABLED` | Usually `false` on Cloud Run unless external persistence is configured |
 
-`cloudbuild.yaml` の `_GCS_BUCKET` は、あなたが作成したBucket名に置き換えてください。
+The production deploy uses:
 
-```yaml
-_GCS_BUCKET: REPLACE_WITH_YOUR_BUCKET_NAME
+```text
+GCS_BUCKET=recipe-robot
+GCS_PREFIX=recipe-chatbot
+CLOUD_RUN_PROJECT_ID=recipe-chatbot-499108
+CLOUD_RUN_REGION=asia-northeast1
+CLOUD_RUN_DEEP_AGENT_JOB=recipe-deep-agent
+MEM0_ENABLED=false
 ```
 
-Artifact Registry repositoryが未作成の場合:
+## Deployment
 
-```bash
-gcloud artifacts repositories create recipe-chatbot \
-  --repository-format=docker \
-  --location=asia-northeast1 \
-  --project recipe-chatbot-499108
-```
+Deployment is defined in `cloudbuild.yaml`.
 
-Service Accountが未作成の場合:
+On push to GitHub `main`, Cloud Build:
 
-```bash
-gcloud iam service-accounts create recipe-web-sa --project recipe-chatbot-499108
-gcloud iam service-accounts create recipe-job-sa --project recipe-chatbot-499108
-```
+1. Builds the Docker image.
+2. Pushes it to Artifact Registry.
+3. Deploys `recipe-chatbot-web` as a Cloud Run Service.
+4. Deploys `recipe-deep-agent` as a Cloud Run Job.
 
-Bucket権限:
-
-```bash
-gcloud storage buckets add-iam-policy-binding gs://YOUR_BUCKET_NAME \
-  --member="serviceAccount:recipe-web-sa@recipe-chatbot-499108.iam.gserviceaccount.com" \
-  --role="roles/storage.objectUser"
-
-gcloud storage buckets add-iam-policy-binding gs://YOUR_BUCKET_NAME \
-  --member="serviceAccount:recipe-job-sa@recipe-chatbot-499108.iam.gserviceaccount.com" \
-  --role="roles/storage.objectUser"
-```
-
-Secret参照権限:
-
-```bash
-gcloud secrets add-iam-policy-binding openrouter-api-key \
-  --member="serviceAccount:recipe-web-sa@recipe-chatbot-499108.iam.gserviceaccount.com" \
-  --role="roles/secretmanager.secretAccessor" \
-  --project recipe-chatbot-499108
-
-gcloud secrets add-iam-policy-binding openrouter-api-key \
-  --member="serviceAccount:recipe-job-sa@recipe-chatbot-499108.iam.gserviceaccount.com" \
-  --role="roles/secretmanager.secretAccessor" \
-  --project recipe-chatbot-499108
-
-gcloud secrets add-iam-policy-binding supabase-database-url \
-  --member="serviceAccount:recipe-web-sa@recipe-chatbot-499108.iam.gserviceaccount.com" \
-  --role="roles/secretmanager.secretAccessor" \
-  --project recipe-chatbot-499108
-
-gcloud secrets add-iam-policy-binding supabase-database-url \
-  --member="serviceAccount:recipe-job-sa@recipe-chatbot-499108.iam.gserviceaccount.com" \
-  --role="roles/secretmanager.secretAccessor" \
-  --project recipe-chatbot-499108
-```
-
-Web ServiceがCloud Run Jobを起動するには、Web Service AccountにJob実行権限が必要です。
-
-```bash
-gcloud projects add-iam-policy-binding recipe-chatbot-499108 \
-  --member="serviceAccount:recipe-web-sa@recipe-chatbot-499108.iam.gserviceaccount.com" \
-  --role="roles/run.developer"
-```
-
-### Manual deploy
-
-GitHub連携の前に手動で確認する場合:
+Manual build/deploy is also possible:
 
 ```bash
 gcloud builds submit \
   --tag asia-northeast1-docker.pkg.dev/recipe-chatbot-499108/recipe-chatbot/app:manual \
   --project recipe-chatbot-499108
+```
 
+```bash
 gcloud run deploy recipe-chatbot-web \
   --image asia-northeast1-docker.pkg.dev/recipe-chatbot-499108/recipe-chatbot/app:manual \
   --region asia-northeast1 \
   --port 8501 \
   --service-account recipe-web-sa@recipe-chatbot-499108.iam.gserviceaccount.com \
-  --set-env-vars GCS_BUCKET=YOUR_BUCKET_NAME,GCS_PREFIX=recipe-chatbot,CLOUD_RUN_PROJECT_ID=recipe-chatbot-499108,CLOUD_RUN_REGION=asia-northeast1,CLOUD_RUN_DEEP_AGENT_JOB=recipe-deep-agent,MEM0_ENABLED=false \
+  --set-env-vars GCS_BUCKET=recipe-robot,GCS_PREFIX=recipe-chatbot,CLOUD_RUN_PROJECT_ID=recipe-chatbot-499108,CLOUD_RUN_REGION=asia-northeast1,CLOUD_RUN_DEEP_AGENT_JOB=recipe-deep-agent,MEM0_ENABLED=false \
   --set-secrets OPENROUTER_API_KEY=openrouter-api-key:latest,DATABASE_URL=supabase-database-url:latest \
   --allow-unauthenticated \
   --project recipe-chatbot-499108
+```
 
+```bash
 gcloud run jobs deploy recipe-deep-agent \
   --image asia-northeast1-docker.pkg.dev/recipe-chatbot-499108/recipe-chatbot/app:manual \
   --region asia-northeast1 \
@@ -213,12 +206,24 @@ gcloud run jobs deploy recipe-deep-agent \
   --task-timeout 30m \
   --max-retries 1 \
   --memory 2Gi \
-  --set-env-vars GCS_BUCKET=YOUR_BUCKET_NAME,GCS_PREFIX=recipe-chatbot \
+  --set-env-vars GCS_BUCKET=recipe-robot,GCS_PREFIX=recipe-chatbot \
   --set-secrets OPENROUTER_API_KEY=openrouter-api-key:latest,DATABASE_URL=supabase-database-url:latest \
   --project recipe-chatbot-499108
 ```
 
-Job単体テスト:
+Public access requires the Cloud Run Invoker role:
+
+```bash
+gcloud run services add-iam-policy-binding recipe-chatbot-web \
+  --region asia-northeast1 \
+  --project recipe-chatbot-499108 \
+  --member=allUsers \
+  --role=roles/run.invoker
+```
+
+## Deep Agent Job
+
+The Deep Agent job can be executed manually for smoke testing:
 
 ```bash
 gcloud run jobs execute recipe-deep-agent \
@@ -228,42 +233,75 @@ gcloud run jobs execute recipe-deep-agent \
   --project recipe-chatbot-499108
 ```
 
-### GitHub deploy
+Cloud Storage output is written under:
 
-Cloud BuildでGitHub repository `Itsuki911/recipe_chatbot` を接続し、`main` branchへのpushをトリガーにして `cloudbuild.yaml` を実行します。初回前に `cloudbuild.yaml` の `_GCS_BUCKET` を実Bucket名へ変更してください。
-
-## JSON output
-
-```bash
-python -m app.json_output "Please share a healthier high-protein version of dashi-maki tamago."
+```text
+gs://recipe-robot/recipe-chatbot/web_recipe_reference/
+gs://recipe-robot/recipe-chatbot/results/
 ```
 
-## View DB as DataFrame
+## Useful Commands
+
+Check recent builds:
 
 ```bash
-python -m app.view_db_dataframe
+gcloud builds list --project recipe-chatbot-499108 --limit=5
+```
+
+Check Cloud Run Service:
+
+```bash
+gcloud run services describe recipe-chatbot-web \
+  --region asia-northeast1 \
+  --project recipe-chatbot-499108
+```
+
+Check Cloud Run Job:
+
+```bash
+gcloud run jobs describe recipe-deep-agent \
+  --region asia-northeast1 \
+  --project recipe-chatbot-499108
+```
+
+View app logs:
+
+```bash
+gcloud logging read \
+  'resource.type="cloud_run_revision" AND resource.labels.service_name="recipe-chatbot-web"' \
+  --project recipe-chatbot-499108 \
+  --limit=50
 ```
 
 ## Project Structure
 
 ```text
 app.py                         # Streamlit frontend
-app/openrouter.py              # OpenRouter free model gateway, usage logging, and 429 switch support
-app/rag_chatbot.py             # LangChain RAG pipeline
-app/adaptive_crawler.py        # crawl4ai Adaptive Crawling research pipeline
-app/deep_agent.py              # crawl4ai Agentic Crawler web reference collection
+app/cloud_run_jobs.py          # Cloud Run Job invocation helper
+app/config.py                  # Runtime configuration
+app/database.py                # SQLAlchemy tables and persistence
+app/deep_agent.py              # Agentic crawler and reference collection
+app/deep_agent_job.py          # Cloud Run Job entrypoint
+app/gcs_storage.py             # Cloud Storage helper
 app/json_output.py             # Structured JSON generation
-app/database.py                # PostgreSQL schema and persistence
-app/view_db_dataframe.py       # DB records as pandas DataFrame
-docs/adaptive_crawling_architecture.md # Adaptive crawling architecture
-scripts/init_db.py             # Create PostgreSQL tables
-scripts/rebuild_index.py       # Crawl and index Just One Cookbook pages
-scripts/figma_ui_spec.md       # Figma handoff spec
-docker/Dockerfile              # Docker image definition
-docker/docker-compose.yml      # Docker Compose services
-docker/requirements-docker.txt # Docker-specific dependencies
+app/openrouter.py              # OpenRouter free-model gateway
+app/rag_chatbot.py             # RAG pipeline
+app/scraper.py                 # Recipe page extraction
+docker/Dockerfile              # Cloud Run compatible image
+docker/docker-compose.yml      # Local Docker Compose stack
+scripts/init_db.py             # Database initialization
+scripts/rebuild_index.py       # RAG index rebuild
+cloudbuild.yaml                # Cloud Build CI/CD pipeline
 ```
 
-## Notes
+## Security Notes
 
-実キーは `.env` にのみ保存してください。`.env` は `.gitignore` 済みです。チャットに貼ったAPIキーは漏洩済みとして扱い、Google AI Studioで再発行することを推奨します。
+- Do not commit `.env`.
+- Store production secrets in Google Secret Manager.
+- Use URL encoding for special characters in database passwords.
+- OpenRouter model IDs must end with `:free`; the app rejects non-free model IDs.
+- Rotate any API key or database password that has appeared in chat, logs, screenshots, or commits.
+
+## License
+
+No license has been declared yet.
