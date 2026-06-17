@@ -7,6 +7,9 @@ substitutions:
   _WEB_SERVICE_ACCOUNT: recipe-web-sa@recipe-chatbot-499108.iam.gserviceaccount.com
   _JOB_SERVICE_ACCOUNT: recipe-job-sa@recipe-chatbot-499108.iam.gserviceaccount.com
 
+options:
+  logging: CLOUD_LOGGING_ONLY
+
 steps:
   - name: gcr.io/cloud-builders/docker
     args:
