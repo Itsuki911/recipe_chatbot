@@ -204,6 +204,18 @@ def _save_reference_page(url: str, html: str, text: str, output_dir: Path = WEB_
     text_path = output_dir / f"{slug}.txt"
     html_path.write_text(html or f"<pre>{text}</pre>", encoding="utf-8")
     text_path.write_text(f"{title}\n\nSource: {url}\n\n{text}\n", encoding="utf-8")
+    from app.gcs_storage import is_enabled, upload_text
+
+    if is_enabled():
+        upload_text(
+            f"web_recipe_reference/{slug}.html",
+            html or f"<pre>{text}</pre>",
+            content_type="text/html; charset=utf-8",
+        )
+        upload_text(
+            f"web_recipe_reference/{slug}.txt",
+            f"{title}\n\nSource: {url}\n\n{text}\n",
+        )
     return SavedPage(url=url, path=text_path, title=title, text_chars=len(text))
 
 

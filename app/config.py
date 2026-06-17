@@ -20,6 +20,14 @@ LOCAL_RECIPE_DIR = DATA_DIR / "joc_pages"
 WEB_RECIPE_REFERENCE_DIR = Path(os.getenv("WEB_RECIPE_REFERENCE_DIR", str(DATA_DIR / "web_recipe_reference")))
 MEM0_DIR = DATA_DIR / "mem0"
 
+# Cloud Run / Cloud Storage migration settings. When GCS_BUCKET is empty, the
+# app keeps using the local data/ folders so local development still works.
+GCS_BUCKET = os.getenv("GCS_BUCKET", "").strip()
+GCS_PREFIX = os.getenv("GCS_PREFIX", "recipe-chatbot").strip().strip("/")
+CLOUD_RUN_PROJECT_ID = os.getenv("CLOUD_RUN_PROJECT_ID", os.getenv("GOOGLE_CLOUD_PROJECT", "")).strip()
+CLOUD_RUN_REGION = os.getenv("CLOUD_RUN_REGION", "asia-northeast1").strip()
+CLOUD_RUN_DEEP_AGENT_JOB = os.getenv("CLOUD_RUN_DEEP_AGENT_JOB", "").strip()
+
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
     "postgresql+psycopg2://recipe_user:recipe_password@localhost:5432/recipe_chatbot",

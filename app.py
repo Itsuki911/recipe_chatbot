@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import uuid
 from datetime import datetime
 from pathlib import Path
 
@@ -13,6 +14,8 @@ try:
         OPENROUTER_MODEL,
         VECTOR_INDEX_DIR,
         WEB_RECIPE_REFERENCE_DIR,
+        CLOUD_RUN_DEEP_AGENT_JOB,
+        GCS_BUCKET,
     )
 except ImportError:
     # config.pyのimport前に壊れても、Streamlit画面とログ出力を最低限続けるためのfallbackです。
@@ -22,6 +25,8 @@ except ImportError:
     VECTOR_INDEX_DIR = fallback_data_dir / "turbovec_index"
     LOCAL_RECIPE_DIR = fallback_data_dir / "joc_pages"
     WEB_RECIPE_REFERENCE_DIR = fallback_data_dir / "web_recipe_reference"
+    CLOUD_RUN_DEEP_AGENT_JOB = os.getenv("CLOUD_RUN_DEEP_AGENT_JOB", "")
+    GCS_BUCKET = os.getenv("GCS_BUCKET", "")
 
 try:
     from app.error_logger import log_error
@@ -137,6 +142,15 @@ def has_local_recipe_files() -> bool:
     return False
 
 
+def has_gcs_recipe_files() -> bool:
+    try:
+        from app.gcs_storage import is_enabled, list_text_objects
+
+        return is_enabled() and bool(list_text_objects("joc_pages") or list_text_objects("web_recipe_reference"))
+    except Exception:
+        return False
+
+
 def has_vector_index() -> bool:
     # TurboVec indexがすでに作成済みか確認します。
     return VECTOR_INDEX_DIR.exists() and any(VECTOR_INDEX_DIR.iterdir())
@@ -146,8 +160,8 @@ def recipe_knowledge_ready(force_rebuild: bool) -> bool:
     # RAG実行前の準備確認です。
     # 再構築する場合は元データが必要で、再構築しない場合は既存indexだけでも動けます。
     if force_rebuild:
-        return has_local_recipe_files()
-    return has_vector_index() or has_local_recipe_files()
+        return has_local_recipe_files() or has_gcs_recipe_files()
+    return has_vector_index() or has_local_recipe_files() or has_gcs_recipe_files()
 
 
 def show_missing_recipe_data_message() -> None:
@@ -211,6 +225,10 @@ def render_sidebar() -> tuple[bool, str]:
                 f"LLM: `{DEEP_AGENT_LLM_BACKEND}` / default model: `{OPENROUTER_MODEL}`。"
                 f"Web検索、seed URL選択、crawl4ai deep crawl、保存を実行します。保存先: `{WEB_RECIPE_REFERENCE_DIR}`"
             )
+            if GCS_BUCKET:
+                st.caption(f"Cloud Storage: `gs://{GCS_BUCKET}`")
+            if CLOUD_RUN_DEEP_AGENT_JOB:
+                st.caption(f"Cloud Run Job: `{CLOUD_RUN_DEEP_AGENT_JOB}`")
             deep_query = st.text_input("収集したいレシピ/調査テーマ", placeholder="omurice recipe technique and variations")
             deep_max_pages = st.slider("最大保存ページ数", min_value=1, max_value=5, value=3)
             if st.button("Deep Agentで収集", use_container_width=True, disabled=deep_agent_unavailable):
@@ -219,6 +237,33 @@ def render_sidebar() -> tuple[bool, str]:
                 else:
                     with st.spinner("Agentic CrawlerがWeb上の関連ページを調査して保存しています。時間がかかります..."):
                         try:
+                            if GCS_BUCKET and CLOUD_RUN_DEEP_AGENT_JOB:
+                                from app.cloud_run_jobs import run_deep_agent_job
+                                from app.gcs_storage import gcs_uri, upload_json
+
+                                request_id = str(uuid.uuid4())
+                                request_object = f"requests/{request_id}.json"
+                                upload_json(
+                                    request_object,
+                                    {
+                                        "request_id": request_id,
+                                        "query": deep_query,
+                                        "max_pages": deep_max_pages,
+                                        "created_at": datetime.utcnow().isoformat(),
+                                    },
+                                )
+                                operation = run_deep_agent_job(
+                                    request_object=request_object,
+                                    query=deep_query,
+                                    max_pages=deep_max_pages,
+                                )
+                                st.success("Cloud Run Jobを開始しました。")
+                                st.caption(f"request_id: `{request_id}`")
+                                st.caption(f"status: `{gcs_uri(f'results/{request_id}/status.json')}`")
+                                with st.expander("Cloud Run operation"):
+                                    st.json(operation)
+                                return force_rebuild, mode
+
                             result = run_deep_agent_recipe_collection_with_details(
                                 deep_query,
                                 max_pages=deep_max_pages,

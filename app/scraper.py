@@ -156,6 +156,11 @@ def save_recipe_page_from_url(url: str, output_dir: Path = LOCAL_RECIPE_DIR) -> 
     text_path = output_dir / f"{slug}.txt"
     markdown_path.write_text(f"# {title}\n\nSource: {url}\n\n{extracted_content}\n", encoding="utf-8")
     text_path.write_text(f"{title}\n\nSource: {url}\n\n{text}\n", encoding="utf-8")
+    from app.gcs_storage import is_enabled, upload_text
+
+    if is_enabled():
+        upload_text(f"joc_pages/{slug}.md", f"# {title}\n\nSource: {url}\n\n{extracted_content}\n")
+        upload_text(f"joc_pages/{slug}.txt", f"{title}\n\nSource: {url}\n\n{text}\n")
     return SavedPage(url=url, path=text_path, title=title, text_chars=len(text))
 
 

@@ -81,6 +81,157 @@ The Docker Compose setup includes:
 
 The default OpenRouter model is `google/gemma-4-26b-a4b-it:free`. Any model configured in `.env` must end with `:free`; otherwise the app raises an error before making a paid request.
 
+## Cloud Run / Supabase migration
+
+このリポジトリはCloud Run移行用に、次の構成へ対応しています。
+
+```text
+Cloud Run Service: Streamlit web app
+Cloud Run Job: Deep Agent collection
+Cloud Storage: collected recipe text/html and job status
+Supabase Postgres: DATABASE_URL
+Secret Manager: OPENROUTER_API_KEY and DATABASE_URL
+Cloud Build: GitHub pushからbuild/deploy
+```
+
+ローカル開発では `GCS_BUCKET` を空にすると、従来どおり `data/` 配下を使います。Cloud Runでは `GCS_BUCKET` を設定すると、`joc_pages/` と `web_recipe_reference/` の保存内容をCloud Storageにもアップロードし、RAG読み込み時にもCloud Storage上の `.html`, `.txt`, `.md` を参照します。
+
+### Required secrets
+
+OpenRouterとSupabaseの値はGoogle Secret Managerに保存します。実キーやDB URLをGitHubへcommitしないでください。
+
+```bash
+printf '%s' 'OPENROUTER_API_KEY_VALUE' |
+gcloud secrets create openrouter-api-key --data-file=- --project recipe-chatbot-499108
+
+printf '%s' 'postgresql+psycopg2://postgres.PROJECT_REF:PASSWORD@aws-REGION.pooler.supabase.com:6543/postgres?sslmode=require' |
+gcloud secrets create supabase-database-url --data-file=- --project recipe-chatbot-499108
+```
+
+既にSecretを作成済みの場合は `create` ではなく `versions add` を使います。
+
+```bash
+printf '%s' 'NEW_VALUE' |
+gcloud secrets versions add openrouter-api-key --data-file=- --project recipe-chatbot-499108
+```
+
+SupabaseはCloud Runのような自動スケーリング環境では、基本的にTransaction Poolerの接続文字列を使います。Supabase Dashboardの `Connect` からTransaction modeを選び、SQLAlchemy用に先頭を `postgresql+psycopg2://` にします。
+
+### Required Google Cloud resources
+
+`cloudbuild.yaml` の `_GCS_BUCKET` は、あなたが作成したBucket名に置き換えてください。
+
+```yaml
+_GCS_BUCKET: REPLACE_WITH_YOUR_BUCKET_NAME
+```
+
+Artifact Registry repositoryが未作成の場合:
+
+```bash
+gcloud artifacts repositories create recipe-chatbot \
+  --repository-format=docker \
+  --location=asia-northeast1 \
+  --project recipe-chatbot-499108
+```
+
+Service Accountが未作成の場合:
+
+```bash
+gcloud iam service-accounts create recipe-web-sa --project recipe-chatbot-499108
+gcloud iam service-accounts create recipe-job-sa --project recipe-chatbot-499108
+```
+
+Bucket権限:
+
+```bash
+gcloud storage buckets add-iam-policy-binding gs://YOUR_BUCKET_NAME \
+  --member="serviceAccount:recipe-web-sa@recipe-chatbot-499108.iam.gserviceaccount.com" \
+  --role="roles/storage.objectUser"
+
+gcloud storage buckets add-iam-policy-binding gs://YOUR_BUCKET_NAME \
+  --member="serviceAccount:recipe-job-sa@recipe-chatbot-499108.iam.gserviceaccount.com" \
+  --role="roles/storage.objectUser"
+```
+
+Secret参照権限:
+
+```bash
+gcloud secrets add-iam-policy-binding openrouter-api-key \
+  --member="serviceAccount:recipe-web-sa@recipe-chatbot-499108.iam.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor" \
+  --project recipe-chatbot-499108
+
+gcloud secrets add-iam-policy-binding openrouter-api-key \
+  --member="serviceAccount:recipe-job-sa@recipe-chatbot-499108.iam.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor" \
+  --project recipe-chatbot-499108
+
+gcloud secrets add-iam-policy-binding supabase-database-url \
+  --member="serviceAccount:recipe-web-sa@recipe-chatbot-499108.iam.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor" \
+  --project recipe-chatbot-499108
+
+gcloud secrets add-iam-policy-binding supabase-database-url \
+  --member="serviceAccount:recipe-job-sa@recipe-chatbot-499108.iam.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor" \
+  --project recipe-chatbot-499108
+```
+
+Web ServiceがCloud Run Jobを起動するには、Web Service AccountにJob実行権限が必要です。
+
+```bash
+gcloud projects add-iam-policy-binding recipe-chatbot-499108 \
+  --member="serviceAccount:recipe-web-sa@recipe-chatbot-499108.iam.gserviceaccount.com" \
+  --role="roles/run.developer"
+```
+
+### Manual deploy
+
+GitHub連携の前に手動で確認する場合:
+
+```bash
+gcloud builds submit \
+  --tag asia-northeast1-docker.pkg.dev/recipe-chatbot-499108/recipe-chatbot/app:manual \
+  --project recipe-chatbot-499108
+
+gcloud run deploy recipe-chatbot-web \
+  --image asia-northeast1-docker.pkg.dev/recipe-chatbot-499108/recipe-chatbot/app:manual \
+  --region asia-northeast1 \
+  --port 8501 \
+  --service-account recipe-web-sa@recipe-chatbot-499108.iam.gserviceaccount.com \
+  --set-env-vars GCS_BUCKET=YOUR_BUCKET_NAME,GCS_PREFIX=recipe-chatbot,CLOUD_RUN_PROJECT_ID=recipe-chatbot-499108,CLOUD_RUN_REGION=asia-northeast1,CLOUD_RUN_DEEP_AGENT_JOB=recipe-deep-agent,MEM0_ENABLED=false \
+  --set-secrets OPENROUTER_API_KEY=openrouter-api-key:latest,DATABASE_URL=supabase-database-url:latest \
+  --allow-unauthenticated \
+  --project recipe-chatbot-499108
+
+gcloud run jobs deploy recipe-deep-agent \
+  --image asia-northeast1-docker.pkg.dev/recipe-chatbot-499108/recipe-chatbot/app:manual \
+  --region asia-northeast1 \
+  --service-account recipe-job-sa@recipe-chatbot-499108.iam.gserviceaccount.com \
+  --command python \
+  --args=-m,app.deep_agent_job \
+  --task-timeout 30m \
+  --max-retries 1 \
+  --memory 2Gi \
+  --set-env-vars GCS_BUCKET=YOUR_BUCKET_NAME,GCS_PREFIX=recipe-chatbot \
+  --set-secrets OPENROUTER_API_KEY=openrouter-api-key:latest,DATABASE_URL=supabase-database-url:latest \
+  --project recipe-chatbot-499108
+```
+
+Job単体テスト:
+
+```bash
+gcloud run jobs execute recipe-deep-agent \
+  --region asia-northeast1 \
+  --update-env-vars DEEP_AGENT_QUERY="tonjiru recipe technique",DEEP_AGENT_MAX_PAGES=2 \
+  --wait \
+  --project recipe-chatbot-499108
+```
+
+### GitHub deploy
+
+Cloud BuildでGitHub repository `Itsuki911/recipe_chatbot` を接続し、`main` branchへのpushをトリガーにして `cloudbuild.yaml` を実行します。初回前に `cloudbuild.yaml` の `_GCS_BUCKET` を実Bucket名へ変更してください。
+
 ## JSON output
 
 ```bash

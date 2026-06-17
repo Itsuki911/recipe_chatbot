@@ -1,0 +1,58 @@
+substitutions:
+  _REGION: asia-northeast1
+  _AR_REPO: recipe-chatbot
+  _SERVICE_NAME: recipe-chatbot-web
+  _JOB_NAME: recipe-deep-agent
+  _GCS_BUCKET: recipe-robot
+  _WEB_SERVICE_ACCOUNT: recipe-web-sa@recipe-chatbot-499108.iam.gserviceaccount.com
+  _JOB_SERVICE_ACCOUNT: recipe-job-sa@recipe-chatbot-499108.iam.gserviceaccount.com
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - docker/Dockerfile
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/app:$SHORT_SHA
+      - .
+
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/app:$SHORT_SHA
+
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE_NAME}
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/app:$SHORT_SHA
+      - --region=${_REGION}
+      - --port=8501
+      - --service-account=${_WEB_SERVICE_ACCOUNT}
+      - --set-env-vars=GCS_BUCKET=${_GCS_BUCKET},GCS_PREFIX=recipe-chatbot,CLOUD_RUN_PROJECT_ID=$PROJECT_ID,CLOUD_RUN_REGION=${_REGION},CLOUD_RUN_DEEP_AGENT_JOB=${_JOB_NAME},MEM0_ENABLED=false
+      - --set-secrets=OPENROUTER_API_KEY=openrouter-api-key:latest,DATABASE_URL=supabase-database-url:latest
+      - --allow-unauthenticated
+
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - jobs
+      - deploy
+      - ${_JOB_NAME}
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/app:$SHORT_SHA
+      - --region=${_REGION}
+      - --service-account=${_JOB_SERVICE_ACCOUNT}
+      - --command=python
+      - --args=-m,app.deep_agent_job
+      - --task-timeout=30m
+      - --max-retries=1
+      - --memory=2Gi
+      - --set-env-vars=GCS_BUCKET=${_GCS_BUCKET},GCS_PREFIX=recipe-chatbot
+      - --set-secrets=OPENROUTER_API_KEY=openrouter-api-key:latest,DATABASE_URL=supabase-database-url:latest
+
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/app:$SHORT_SHA

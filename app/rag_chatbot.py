@@ -253,6 +253,32 @@ def load_reference_recipe_docs() -> list[Document]:
     docs: list[Document] = []
     for directory in (LOCAL_RECIPE_DIR, WEB_RECIPE_REFERENCE_DIR):
         docs.extend(load_local_recipe_docs(directory))
+    docs.extend(load_gcs_recipe_docs())
+    return docs
+
+
+def load_gcs_recipe_docs() -> list[Document]:
+    try:
+        from app.gcs_storage import download_object_text, is_enabled, list_text_objects
+    except Exception:
+        return []
+    if not is_enabled():
+        return []
+
+    docs: list[Document] = []
+    for prefix in ("joc_pages", "web_recipe_reference"):
+        for item in list_text_objects(prefix):
+            try:
+                raw = download_object_text(item.name)
+            except Exception:
+                continue
+            if Path(item.name).suffix.lower() in {".html", ".htm"}:
+                text = bs4.BeautifulSoup(raw, "html.parser").get_text("\n", strip=True)
+            else:
+                text = raw
+            text = re.sub(r"\n{3,}", "\n\n", text).strip()
+            if len(text) > 500:
+                docs.append(Document(page_content=text, metadata={"source": item.uri}))
     return docs
 
 
