@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import os
+import base64
+import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 from zoneinfo import ZoneInfo
 
 import streamlit as st
@@ -69,6 +72,13 @@ def apply_styles() -> None:
             border: 1px solid #dfd6c7; border-radius: 999px; font-size: 0.78rem;
             color: #5f5141; background: #fffaf2;
         }
+        .chat-limit-note { color: #6f6254; font-size: 0.86rem; }
+        @media (max-width: 720px) {
+            .block-container { padding-left: 0.85rem; padding-right: 0.85rem; padding-top: 0.8rem; }
+            [data-testid="stSidebar"] { background: #fbf8f2; }
+            div[data-testid="column"] { width: 100% !important; flex: 1 1 100% !important; }
+            .stButton button { width: 100%; }
+        }
         </style>
         """,
         unsafe_allow_html=True,
@@ -99,7 +109,6 @@ def is_openrouter_config_error(exc: Exception) -> bool:
         "OPENROUTER_API_KEY" in message
         or "Unsafe OpenRouter model" in message
         or "Use only models ending with ':free'" in message
-        or "402" in message
     )
 
 
@@ -130,6 +139,21 @@ def show_generation_error(exc: Exception, fallback_message: str) -> None:
         st.code(str(exc))
 
 
+def render_llm_trace(title: str, steps: list[str]) -> None:
+    if not steps:
+        return
+    with st.expander(title, expanded=False):
+        for step in steps:
+            st.write(step)
+
+
+def format_rate_limit_details(exc: Exception, stage: str) -> str:
+    model = getattr(exc, "model", active_openrouter_model_label())
+    status_code = getattr(exc, "status_code", "unknown")
+    message = getattr(exc, "message", str(exc))
+    return f"stage={stage}, model={model}, status_code={status_code}, message={message}"
+
+
 def has_local_recipe_files() -> bool:
     # data/joc_pages と data/web_recipe_reference に保存済みのレシピ文書があるか確認します。
     for directory in (LOCAL_RECIPE_DIR, WEB_RECIPE_REFERENCE_DIR):
@@ -145,9 +169,18 @@ def has_local_recipe_files() -> bool:
 
 def has_gcs_recipe_files() -> bool:
     try:
-        from app.gcs_storage import is_enabled, list_text_objects
+        from app.gcs_storage import is_available, list_text_objects
 
-        return is_enabled() and bool(list_text_objects("joc_pages") or list_text_objects("web_recipe_reference"))
+        return is_available() and bool(list_text_objects("joc_pages") or list_text_objects("web_recipe_reference"))
+    except Exception:
+        return False
+
+
+def gcs_storage_available() -> bool:
+    try:
+        from app.gcs_storage import is_available
+
+        return is_available()
     except Exception:
         return False
 
@@ -226,12 +259,15 @@ def render_sidebar() -> tuple[bool, str]:
                 f"LLM: `{DEEP_AGENT_LLM_BACKEND}` / default model: `{OPENROUTER_MODEL}`。"
                 f"Web検索、seed URL選択、crawl4ai deep crawl、保存を実行します。保存先: `{WEB_RECIPE_REFERENCE_DIR}`"
             )
-            if GCS_BUCKET:
+            gcs_available = gcs_storage_available()
+            if GCS_BUCKET and gcs_available:
                 st.caption(f"Cloud Storage: `gs://{GCS_BUCKET}`")
+            elif GCS_BUCKET:
+                st.caption("Cloud Storage設定はありますが、この環境ではGCSクライアントを利用できないためローカル保存に切り替えます。")
             if CLOUD_RUN_DEEP_AGENT_JOB:
                 st.caption(f"Cloud Run Job: `{CLOUD_RUN_DEEP_AGENT_JOB}`")
             sidebar_job = st.session_state.get("sidebar_deep_agent_job")
-            if sidebar_job and GCS_BUCKET:
+            if sidebar_job and GCS_BUCKET and gcs_available:
                 from app.gcs_storage import download_json, gcs_uri
 
                 status_object = f"results/{sidebar_job['request_id']}/status.json"
@@ -266,7 +302,7 @@ def render_sidebar() -> tuple[bool, str]:
                 else:
                     with st.spinner("Agentic CrawlerがWeb上の関連ページを調査して保存しています。時間がかかります..."):
                         try:
-                            if GCS_BUCKET and CLOUD_RUN_DEEP_AGENT_JOB:
+                            if GCS_BUCKET and CLOUD_RUN_DEEP_AGENT_JOB and gcs_available:
                                 from app.cloud_run_jobs import run_deep_agent_job
                                 from app.gcs_storage import gcs_uri, upload_json
 
@@ -310,8 +346,13 @@ def render_sidebar() -> tuple[bool, str]:
                                 # デバッグしやすいよう、Agentが考えた検索語と選んだseed URLをUIに出します。
                                 st.write("Search queries")
                                 st.json(result.search_queries)
+                                st.write("Candidate URLs")
+                                st.json(result.candidate_urls)
                                 st.write("Selected URLs")
                                 st.json(result.selected_urls)
+                                if result.crawl_errors:
+                                    st.write("Crawl errors")
+                                    st.json(result.crawl_errors[:10])
                             for saved_page in result.saved_pages:
                                 st.caption(f"{saved_page.path.name} - {saved_page.url}")
                         except Exception as exc:
@@ -335,6 +376,7 @@ def ensure_chat_history() -> None:
                 "content": "こんにちは。保存済みレシピ参照を元に、和食レシピを一緒に組み立てます。",
             }
         ]
+    st.session_state.setdefault("openrouter_rag_turn_count", count_user_turns(st.session_state.messages))
 
 
 def ensure_openrouter_chat_history() -> None:
@@ -346,6 +388,114 @@ def ensure_openrouter_chat_history() -> None:
                 "content": "こんにちは。RAGを使わず、OpenRouter free modelだけで回答します。",
             }
         ]
+    st.session_state.setdefault("openrouter_turn_count", count_user_turns(st.session_state.openrouter_messages))
+
+
+MAX_CHAT_TURNS = 5
+IMAGE_SYSTEM_PROMPT = """When the user provides images, inspect them as part of the request.
+Use the text prompt as the main task, and use the image only for observable visual evidence.
+If the image could influence recipe selection, ingredient identification, substitutions, cooking stage, plating, or tool choice, mention that explicitly.
+For RAG or Deep Agent workflows, use image observations to form better search/retrieval queries, but do not invent invisible details.
+Do not reveal hidden reasoning or chain-of-thought; provide a concise natural-language explanation of useful observations and actions."""
+
+
+def count_user_turns(messages: list[dict[str, Any]]) -> int:
+    return sum(1 for message in messages if message.get("role") == "user")
+
+
+def chat_turns_remaining(messages_key: str) -> int:
+    return max(0, MAX_CHAT_TURNS - count_user_turns(st.session_state.get(messages_key, [])))
+
+
+def render_turn_limit(messages_key: str) -> bool:
+    remaining = chat_turns_remaining(messages_key)
+    st.markdown(
+        f'<div class="chat-limit-note">このchatは最大{MAX_CHAT_TURNS}回まで質問できます。残り {remaining} 回。</div>',
+        unsafe_allow_html=True,
+    )
+    if remaining <= 0:
+        st.warning("このchatの上限に達しました。新しく始める場合はページを再読み込みするか、会話履歴をリセットしてください。")
+        return False
+    return True
+
+
+def image_to_data_url(uploaded_file) -> str:
+    content_type = uploaded_file.type or "image/png"
+    encoded = base64.b64encode(uploaded_file.getvalue()).decode("ascii")
+    return f"data:{content_type};base64,{encoded}"
+
+
+def prepare_image_payloads(image_files: list[Any]) -> list[dict[str, str]]:
+    payloads: list[dict[str, str]] = []
+    for image_file in image_files:
+        payloads.append(
+            {
+                "name": getattr(image_file, "name", "camera-image"),
+                "type": getattr(image_file, "type", "image/png") or "image/png",
+                "data_url": image_to_data_url(image_file),
+            }
+        )
+    return payloads
+
+
+def build_image_prompt_text(question: str, image_payloads: list[dict[str, str]]) -> str:
+    if not image_payloads:
+        return question
+    names = ", ".join(image.get("name", "camera-image") for image in image_payloads)
+    return (
+        f"{IMAGE_SYSTEM_PROMPT}\n\n"
+        f"User text prompt:\n{question}\n\n"
+        f"Attached image files: {names}"
+    )
+
+
+def build_multimodal_content(question: str, image_payloads: list[dict[str, str]]) -> list[dict[str, Any]]:
+    content: list[dict[str, Any]] = [{"type": "text", "text": build_image_prompt_text(question, image_payloads)}]
+    for image_payload in image_payloads:
+        content.append({"type": "image_url", "image_url": {"url": image_payload["data_url"]}})
+    return content
+
+
+def render_image_input(key_prefix: str) -> list[Any]:
+    with st.expander("画像入力", expanded=False):
+        mode = st.radio(
+            "画像の追加方法",
+            ["アップロード", "スマホ/カメラ"],
+            horizontal=True,
+            key=f"{key_prefix}_image_mode",
+        )
+        image_files: list[Any] = []
+        if mode == "スマホ/カメラ":
+            captured = st.camera_input("カメラで撮影", key=f"{key_prefix}_camera")
+            if captured is not None:
+                image_files.append(captured)
+        uploaded = st.file_uploader(
+            "画像をアップロード",
+            type=["jpg", "jpeg", "png", "webp"],
+            accept_multiple_files=True,
+            key=f"{key_prefix}_upload",
+        )
+        if uploaded:
+            image_files.extend(uploaded)
+        if image_files:
+            st.caption("一時プレビュー")
+            preview_cols = st.columns(min(3, len(image_files)))
+            for index, image_file in enumerate(image_files):
+                preview_cols[index % len(preview_cols)].image(
+                    image_file,
+                    caption=getattr(image_file, "name", f"image-{index + 1}"),
+                    use_container_width=True,
+                )
+        return image_files
+
+
+def stream_markdown_text(text: str) -> str:
+    def chunks():
+        for index in range(0, len(text), 24):
+            yield text[index : index + 24]
+            time.sleep(0.012)
+
+    return st.write_stream(chunks())
 
 
 def parse_yes_no(value: str) -> bool | None:
@@ -384,6 +534,11 @@ def render_openrouter_model_switch(task: dict) -> None:
     st.warning("OpenRouter free modelの利用制限に達しました。別の無料モデルへ切り替えて、このタスクを続行できます。")
     if task.get("rate_limited_model"):
         st.caption(f"Rate limited model: `{task['rate_limited_model']}`")
+    if task.get("rate_limit_status_code"):
+        st.caption(f"OpenRouter status: `{task['rate_limit_status_code']}`")
+    if task.get("rate_limit_message"):
+        with st.expander("OpenRouter rate limit message"):
+            st.code(str(task["rate_limit_message"]))
 
     try:
         candidates = ranked_free_openrouter_models(limit=5)
@@ -448,6 +603,9 @@ def defer_for_openrouter_model_switch(exc: Exception, task: dict) -> bool:
         return False
     task["needs_model_switch"] = True
     task["rate_limited_model"] = exc.model
+    task["rate_limit_status_code"] = exc.status_code
+    task["rate_limit_message"] = str(exc)
+    task["rate_limit_payload"] = getattr(exc, "payload", {})
     st.session_state.openrouter_pending_task = task
     render_openrouter_model_switch(task)
     return True
@@ -471,13 +629,19 @@ def deep_agent_denied_message(question: str) -> str:
     )
 
 
-def render_deep_agent_permission_buttons(question: str, *, key_prefix: str) -> None:
+def render_deep_agent_permission_buttons(
+    question: str,
+    *,
+    key_prefix: str,
+    image_payloads: list[dict[str, str]] | None = None,
+) -> None:
     col_allow, col_deny = st.columns(2)
     if col_allow.button("Deep Agentを実行", type="primary", key=f"{key_prefix}_allow"):
         st.session_state.openrouter_pending_task = {
             "type": "openrouter_rag_deep_agent_choice",
             "question": question,
             "choice": True,
+            "image_payloads": image_payloads or [],
         }
         st.session_state.openrouter_rag_deep_agent_pending = None
         st.rerun()
@@ -486,6 +650,7 @@ def render_deep_agent_permission_buttons(question: str, *, key_prefix: str) -> N
             "type": "openrouter_rag_deep_agent_choice",
             "question": question,
             "choice": False,
+            "image_payloads": image_payloads or [],
         }
         st.session_state.openrouter_rag_deep_agent_pending = None
         st.rerun()
@@ -512,6 +677,8 @@ def start_cloud_deep_agent_collection(question: str, max_pages: int = 3) -> str:
 
 def maybe_start_cloud_deep_agent(question: str, max_pages: int = 3) -> str | None:
     if not (GCS_BUCKET and CLOUD_RUN_DEEP_AGENT_JOB):
+        return None
+    if not gcs_storage_available():
         return None
     return start_cloud_deep_agent_collection(question, max_pages=max_pages)
 
@@ -619,6 +786,25 @@ def run_chat_deep_agent_answer(
     return result, response
 
 
+def render_deep_agent_failure(exc: Exception, *, question: str, result=None) -> None:
+    st.error("Deep Agent自動収集に失敗しました。")
+    st.caption("ベクトルDBに十分な情報がなかったため自動収集を試しましたが、収集または回答生成で停止しました。")
+    if result is not None:
+        with st.expander("Deep Agent収集内容"):
+            st.write("Search queries")
+            st.json(getattr(result, "search_queries", []))
+            st.write("Candidate URLs")
+            st.json(getattr(result, "candidate_urls", []))
+            st.write("Selected URLs")
+            st.json(getattr(result, "selected_urls", []))
+            crawl_errors = getattr(result, "crawl_errors", [])
+            if crawl_errors:
+                st.write("Crawl errors")
+                st.json(crawl_errors[:10])
+    with st.expander("エラー詳細"):
+        st.code(f"question={question}\n{type(exc).__name__}: {exc}")
+
+
 def ensure_rag_chatbot_capabilities(chatbot, reload_chatbot):
     required_methods = ("retrieve", "has_sufficient_context", "answer_from_docs", "answer_from_model_knowledge")
     if all(hasattr(chatbot, method_name) for method_name in required_methods):
@@ -630,17 +816,27 @@ def ensure_rag_chatbot_capabilities(chatbot, reload_chatbot):
 def persist_current_conversation(*, ai_type: str, messages_key: str, conversation_key: str) -> None:
     from app.database import save_chat_conversation, save_chat_conversation_fallback
 
+    current_id = st.session_state.get(conversation_key)
+    if st.session_state.get("postgres_unavailable"):
+        fallback_id = save_chat_conversation_fallback(
+            ai_type=ai_type,
+            messages=st.session_state.get(messages_key, []),
+            conversation_id=str(current_id) if str(current_id).startswith("local-") else None,
+        )
+        st.session_state[conversation_key] = fallback_id
+        return
+
     try:
         conversation_id = save_chat_conversation(
             ai_type=ai_type,
             messages=st.session_state.get(messages_key, []),
-            conversation_id=st.session_state.get(conversation_key),
+            conversation_id=current_id,
         )
         st.session_state[conversation_key] = conversation_id
     except Exception as exc:
         log_error("Chat conversation PostgreSQL save", exc, details=f"ai_type={ai_type}")
+        st.session_state.postgres_unavailable = True
         st.session_state.conversation_save_error = str(exc)
-        current_id = st.session_state.get(conversation_key)
         fallback_id = save_chat_conversation_fallback(
             ai_type=ai_type,
             messages=st.session_state.get(messages_key, []),
@@ -788,25 +984,46 @@ def render_openrouter_rag_chat(force_rebuild: bool) -> None:
 
     pending_permission = st.session_state.get("openrouter_rag_deep_agent_pending")
     if pending_permission:
-        render_deep_agent_permission_buttons(pending_permission["question"], key_prefix="rag_pending_deep_agent")
+        render_deep_agent_permission_buttons(
+            pending_permission["question"],
+            key_prefix="rag_pending_deep_agent",
+            image_payloads=pending_permission.get("image_payloads") or [],
+        )
         return
 
     pending_task = st.session_state.get("openrouter_pending_task")
+    rerun_after_response = False
     if pending_task and pending_task.get("type") in {"openrouter_rag", "openrouter_rag_deep_agent_choice"}:
+        rerun_after_response = True
         if pending_task.get("needs_model_switch"):
             render_openrouter_model_switch(pending_task)
         question = pending_task["question"]
         task_type = pending_task["type"]
         choice = pending_task.get("choice")
+        image_payloads = pending_task.get("image_payloads") or []
         st.session_state.openrouter_pending_task = None
     else:
         question = None
         task_type = "openrouter_rag"
         choice = None
+        image_payloads = []
+    llm_steps: list[str] = []
 
-    if question is None and (user_text := st.chat_input("例: 豚汁の材料と作り方、普通の味噌汁との違いを教えて")):
+    image_files = render_image_input("rag")
+    can_chat = render_turn_limit("messages")
+    if question is None and (
+        user_text := st.chat_input(
+            "例: 豚汁の材料と作り方、普通の味噌汁との違いを教えて",
+            disabled=not can_chat,
+        )
+    ):
+        image_payloads = prepare_image_payloads(image_files)
         question = user_text
-        st.session_state.messages.append({"role": "user", "content": question})
+        display_question = question
+        if image_payloads:
+            display_question += "\n\n画像: " + ", ".join(image["name"] for image in image_payloads)
+        st.session_state.messages.append({"role": "user", "content": display_question})
+        st.session_state.openrouter_rag_turn_count = count_user_turns(st.session_state.messages)
         persist_current_conversation(
             ai_type="OpenRouter_RAG",
             messages_key="messages",
@@ -814,6 +1031,8 @@ def render_openrouter_rag_chat(force_rebuild: bool) -> None:
         )
         with st.chat_message("user"):
             st.markdown(question)
+            for image_file in image_files:
+                st.image(image_file, caption=getattr(image_file, "name", "image"), use_container_width=True)
 
     if question is None:
         return
@@ -824,7 +1043,7 @@ def render_openrouter_rag_chat(force_rebuild: bool) -> None:
                 if choice:
                     with st.spinner("Deep Agentで情報を探して保存し、RAGインデックスを再作成しています..."):
                         result, response = run_chat_deep_agent_answer(
-                            question=question,
+                            question=build_image_prompt_text(question, image_payloads),
                             force_rebuild=True,
                             load_current_chatbot=lambda rebuild: load_chatbot(rebuild, "openrouter"),
                         )
@@ -849,6 +1068,7 @@ def render_openrouter_rag_chat(force_rebuild: bool) -> None:
                         "type": "openrouter_rag_deep_agent_choice",
                         "question": question,
                         "choice": choice,
+                        "image_payloads": image_payloads,
                     },
                 )
                 log_error("OpenRouter RAG Deep Agent choice handling", exc, details=f"question={question}")
@@ -861,7 +1081,7 @@ def render_openrouter_rag_chat(force_rebuild: bool) -> None:
                     conversation_key="openrouter_rag_conversation_id",
                 )
                 st.stop()
-            st.markdown(prefix + response.answer)
+            stream_markdown_text(prefix + response.answer)
             render_sources(response.sources)
         st.session_state.rebuild_index_next = False
         st.session_state.messages.append({"role": "assistant", "content": prefix + response.answer})
@@ -870,22 +1090,60 @@ def render_openrouter_rag_chat(force_rebuild: bool) -> None:
             messages_key="messages",
             conversation_key="openrouter_rag_conversation_id",
         )
-        st.stop()
+        if rerun_after_response:
+            st.rerun()
+        return
 
     should_rebuild = force_rebuild or st.session_state.get("rebuild_index_next", False)
     if not recipe_knowledge_ready(should_rebuild):
-        message = deep_agent_offer_message(question)
         with st.chat_message("assistant"):
-            st.markdown(message)
-            render_deep_agent_permission_buttons(question, key_prefix="rag_missing_data")
-        st.session_state.openrouter_rag_deep_agent_pending = {"question": question}
-        st.session_state.messages.append({"role": "assistant", "content": message})
-        persist_current_conversation(
-            ai_type="OpenRouter_RAG",
-            messages_key="messages",
-            conversation_key="openrouter_rag_conversation_id",
-        )
-        st.stop()
+            try:
+                llm_steps.append("RAG準備確認: ベクトルDB/保存済みレシピ参照が不足")
+                llm_steps.append("Deep Agent検索計画: 自動実行")
+                with st.spinner("RAGデータが不足しているため、Deep Agentで自動収集してから回答します..."):
+                    result, response = run_chat_deep_agent_answer(
+                        question=build_image_prompt_text(question, image_payloads),
+                        force_rebuild=True,
+                        load_current_chatbot=lambda rebuild: load_chatbot(rebuild, "openrouter"),
+                    )
+                if result is None and response is None:
+                    st.info("Deep Agent Cloud Run Jobを開始しました。完了後に「状態を更新して回答を続ける」を押してください。")
+                    render_llm_trace("今回のLLM/ツール実行段階", llm_steps)
+                    st.stop()
+                llm_steps.append(f"Deep Agent保存: {len(result.saved_pages)}件")
+                llm_steps.append("RAG回答生成: Deep Agent収集後の文脈で実行")
+                prefix = f"Deep Agentで{len(result.saved_pages)}件の参照を保存しました。\n\n"
+                stream_markdown_text(prefix + response.answer)
+                render_sources(response.sources)
+                render_llm_trace("今回のLLM/ツール実行段階", llm_steps)
+                st.session_state.rebuild_index_next = False
+                st.session_state.messages.append({"role": "assistant", "content": prefix + response.answer})
+                persist_current_conversation(
+                    ai_type="OpenRouter_RAG",
+                    messages_key="messages",
+                    conversation_key="openrouter_rag_conversation_id",
+                )
+                return
+            except Exception as exc:
+                defer_for_openrouter_model_switch(
+                    exc,
+                    {
+                        "type": "openrouter_rag",
+                        "question": question,
+                        "image_payloads": image_payloads,
+                    },
+                )
+                details = format_rate_limit_details(exc, "Deep Agent automatic collection")
+                log_error("OpenRouter RAG Deep Agent automatic collection", exc, details=f"question={question}\n{details}")
+                render_deep_agent_failure(exc, question=question)
+                render_llm_trace("今回のLLM/ツール実行段階", llm_steps)
+                st.session_state.messages.append({"role": "assistant", "content": "Deep Agent自動収集に失敗しました。"})
+                persist_current_conversation(
+                    ai_type="OpenRouter_RAG",
+                    messages_key="messages",
+                    conversation_key="openrouter_rag_conversation_id",
+                )
+                st.stop()
     try:
         chatbot = load_chatbot(should_rebuild, "openrouter")
         chatbot = ensure_rag_chatbot_capabilities(
@@ -900,33 +1158,64 @@ def render_openrouter_rag_chat(force_rebuild: bool) -> None:
     with st.chat_message("assistant"):
         try:
             with st.spinner("レシピページを検索して、RAGで十分に答えられるか判定中..."):
-                docs = chatbot.retrieve(question)
-                has_context = chatbot.has_sufficient_context(question, docs)
+                llm_steps.append("RAG検索: ベクトルDBから関連チャンク取得")
+                retrieval_question = build_image_prompt_text(question, image_payloads)
+                docs = chatbot.retrieve(retrieval_question)
+                llm_steps.append("RAG context判定: OpenRouter free modelで十分性を判定")
+                has_context = chatbot.has_sufficient_context(retrieval_question, docs)
             if not has_context:
-                message = deep_agent_offer_message(question)
-                st.markdown(message)
-                render_deep_agent_permission_buttons(question, key_prefix="rag_insufficient_context")
-                st.session_state.openrouter_rag_deep_agent_pending = {"question": question}
-                st.session_state.messages.append({"role": "assistant", "content": message})
+                llm_steps.append("RAG context判定結果: 不十分")
+                llm_steps.append("Deep Agent検索計画: 自動実行")
+                with st.spinner("ベクトルDBに十分な情報がないため、Deep Agentで自動収集してから回答します..."):
+                    result, response = run_chat_deep_agent_answer(
+                        question=build_image_prompt_text(question, image_payloads),
+                        force_rebuild=True,
+                        load_current_chatbot=lambda rebuild: load_chatbot(rebuild, "openrouter"),
+                    )
+                if result is None and response is None:
+                    st.info("Deep Agent Cloud Run Jobを開始しました。完了後に「状態を更新して回答を続ける」を押してください。")
+                    render_llm_trace("今回のLLM/ツール実行段階", llm_steps)
+                    st.stop()
+                llm_steps.append(f"Deep Agent保存: {len(result.saved_pages)}件")
+                llm_steps.append("RAG回答生成: Deep Agent収集後の文脈で実行")
+                prefix = f"Deep Agentで{len(result.saved_pages)}件の参照を保存しました。\n\n"
+                stream_markdown_text(prefix + response.answer)
+                render_sources(response.sources)
+                render_llm_trace("今回のLLM/ツール実行段階", llm_steps)
+                st.session_state.rebuild_index_next = False
+                st.session_state.messages.append({"role": "assistant", "content": prefix + response.answer})
                 persist_current_conversation(
                     ai_type="OpenRouter_RAG",
                     messages_key="messages",
                     conversation_key="openrouter_rag_conversation_id",
                 )
-                st.stop()
+                return
             with st.spinner("RAG文脈を使ってOpenRouter free modelで回答を作成中..."):
-                response = chatbot.answer_from_docs(question, docs)
+                llm_steps.append("mem0検索: 好み/制約の長期記憶を検索")
+                llm_steps.append("RAG回答生成: OpenRouter free modelで回答作成")
+                if image_payloads and hasattr(chatbot, "answer_from_docs_multimodal"):
+                    response = chatbot.answer_from_docs_multimodal(
+                        question,
+                        docs,
+                        build_multimodal_content(question, image_payloads),
+                    )
+                else:
+                    response = chatbot.answer_from_docs(question, docs)
+                llm_steps.append("mem0保存: 今回の会話を長期記憶へ保存")
         except Exception as exc:
             defer_for_openrouter_model_switch(
                 exc,
                 {
                     "type": "openrouter_rag",
                     "question": question,
+                    "image_payloads": image_payloads,
                 },
             )
-            log_error("OpenRouter RAG chat response generation", exc, details=f"question={question}")
+            details = format_rate_limit_details(exc, "OpenRouter RAG chat")
+            log_error("OpenRouter RAG chat response generation", exc, details=f"question={question}\n{details}")
             error_message = "OpenRouter RAG回答生成中にエラーが発生しました。"
             show_generation_error(exc, error_message)
+            render_llm_trace("今回のLLM/ツール実行段階", llm_steps)
             st.session_state.messages.append({"role": "assistant", "content": error_message})
             persist_current_conversation(
                 ai_type="OpenRouter_RAG",
@@ -934,18 +1223,21 @@ def render_openrouter_rag_chat(force_rebuild: bool) -> None:
                 conversation_key="openrouter_rag_conversation_id",
             )
             st.stop()
-        st.markdown(response.answer)
+        stream_markdown_text(response.answer)
         render_sources(response.sources)
+        render_llm_trace("今回のLLM/ツール実行段階", llm_steps)
     st.session_state.messages.append({"role": "assistant", "content": response.answer})
     persist_current_conversation(
         ai_type="OpenRouter_RAG",
         messages_key="messages",
         conversation_key="openrouter_rag_conversation_id",
     )
+    if rerun_after_response:
+        st.rerun()
 
 
 def render_openrouter_chat() -> None:
-    from app.openrouter_chatbot import ask_openrouter
+    from app.openrouter_chatbot import ask_openrouter, ask_openrouter_multimodal
 
     st.subheader("OpenRouter Chat")
     st.caption(f"RAGなし。Active free model: `{active_openrouter_model_label()}`")
@@ -958,13 +1250,26 @@ def render_openrouter_chat() -> None:
             st.markdown(message["content"])
 
     pending_task = st.session_state.get("openrouter_pending_task")
+    rerun_after_response = False
     if pending_task and pending_task.get("type") == "openrouter_chat":
+        rerun_after_response = True
         if pending_task.get("needs_model_switch"):
             render_openrouter_model_switch(pending_task)
         question = pending_task["question"]
+        image_payloads = pending_task.get("image_payloads") or []
         st.session_state.openrouter_pending_task = None
-    elif question := st.chat_input("例: だし巻き卵の作り方を説明して"):
-        st.session_state.openrouter_messages.append({"role": "user", "content": question})
+    else:
+        image_files = render_image_input("openrouter")
+        can_chat = render_turn_limit("openrouter_messages")
+        if question := st.chat_input("例: だし巻き卵の作り方を説明して", disabled=not can_chat):
+            image_payloads = prepare_image_payloads(image_files)
+            display_question = question
+            if image_payloads:
+                display_question += "\n\n画像: " + ", ".join(image["name"] for image in image_payloads)
+            st.session_state.openrouter_messages.append({"role": "user", "content": display_question})
+            st.session_state.openrouter_turn_count = count_user_turns(st.session_state.openrouter_messages)
+        else:
+            return
         persist_current_conversation(
             ai_type="OpenRouter",
             messages_key="openrouter_messages",
@@ -972,19 +1277,23 @@ def render_openrouter_chat() -> None:
         )
         with st.chat_message("user"):
             st.markdown(question)
-    else:
-        return
+            for image_file in image_files:
+                st.image(image_file, caption=getattr(image_file, "name", "image"), use_container_width=True)
 
     with st.chat_message("assistant"):
         try:
             with st.spinner("OpenRouter free modelに問い合わせ中..."):
-                answer = ask_openrouter(question)
+                if image_payloads:
+                    answer = ask_openrouter_multimodal(build_multimodal_content(question, image_payloads))
+                else:
+                    answer = ask_openrouter(question)
         except Exception as exc:
             defer_for_openrouter_model_switch(
                 exc,
                 {
                     "type": "openrouter_chat",
                     "question": question,
+                    "image_payloads": image_payloads,
                 },
             )
             log_error("OpenRouter-only chat generation", exc, details=f"question={question}")
@@ -997,13 +1306,15 @@ def render_openrouter_chat() -> None:
                 conversation_key="openrouter_conversation_id",
             )
             st.stop()
-        st.markdown(answer)
+        stream_markdown_text(answer)
     st.session_state.openrouter_messages.append({"role": "assistant", "content": answer})
     persist_current_conversation(
         ai_type="OpenRouter",
         messages_key="openrouter_messages",
         conversation_key="openrouter_conversation_id",
     )
+    if rerun_after_response:
+        st.rerun()
 
 
 def render_crawl4ai_check() -> None:
@@ -1019,10 +1330,41 @@ def render_crawl4ai_check() -> None:
     )
     max_results = st.slider("検索候補URL数", min_value=1, max_value=8, value=5)
     if st.button("Crawl4AI性能チェックを実行", type="primary"):
+        progress_box = st.container()
+        progress_lines: list[str] = []
+
+        def show_progress(message: str) -> None:
+            progress_lines.append(message)
+            progress_box.markdown("\n\n".join(f"- {line}" for line in progress_lines))
+
         with st.spinner("検索クエリ生成、URL探索、crawl4ai LLM抽出を実行中..."):
-            result = run_crawl4ai_performance_check(user_request, max_results=max_results)
+            result = run_crawl4ai_performance_check(
+                user_request,
+                max_results=max_results,
+                progress_callback=show_progress,
+            )
+        if result.search_query:
+            st.write("Generated search query")
+            st.code(result.search_query)
+        if result.candidate_urls:
+            st.write("Search results")
+            st.dataframe(
+                [{"rank": index + 1, "url": url} for index, url in enumerate(result.candidate_urls)],
+                use_container_width=True,
+                hide_index=True,
+            )
         if not result.success:
-            log_error("Crawl4AI performance check", RuntimeError(result.error or "unknown error"))
+            log_error(
+                "Crawl4AI performance check",
+                RuntimeError(result.error or "unknown error"),
+                details=(
+                    f"model={result.model_id}\n"
+                    f"selected_url={result.selected_url}\n"
+                    f"attempted_urls={result.attempted_urls}\n"
+                    f"rate_limit={result.rate_limited}\n"
+                    f"extraction_mode={result.extraction_mode}"
+                ),
+            )
             st.error("Crawl4AI性能チェックに失敗しました。")
             st.code(result.error or "unknown error")
             if result.timings:
@@ -1030,20 +1372,28 @@ def render_crawl4ai_check() -> None:
             return
 
         st.success("Crawl4AI性能チェックが完了しました。")
+        if result.rate_limited:
+            st.warning("OpenRouter free model制限に達したため、LLM抽出ではなく通常抽出で表示しました。")
         col_a, col_b, col_c = st.columns(3)
         col_a.metric("Total sec", f"{result.timings.get('total_sec', 0):.2f}")
         col_b.metric("Markdown chars", result.markdown_chars)
         col_c.metric("HTML chars", result.cleaned_html_chars)
+        col_model, col_mode = st.columns(2)
+        col_model.metric("OpenRouter model", result.model_id or "-")
+        col_mode.metric("Extraction mode", result.extraction_mode)
 
-        st.write("Generated search query")
-        st.code(result.search_query)
         st.write("Selected URL")
         st.code(result.selected_url)
+        if result.fallback_reason:
+            with st.expander("Fallback reason"):
+                st.code(result.fallback_reason)
 
-        with st.expander("Candidate URLs"):
-            st.json(result.candidate_urls)
         with st.expander("Attempted URLs"):
             st.json(result.attempted_urls)
+        if result.progress_messages:
+            with st.expander("AI thinking process", expanded=True):
+                for line in result.progress_messages:
+                    st.write(line)
         with st.expander("Timing details", expanded=True):
             st.json({key: round(value, 3) for key, value in result.timings.items()})
         st.write("Extracted content")

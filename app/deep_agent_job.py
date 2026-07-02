@@ -102,6 +102,7 @@ def main(argv: list[str] | None = None) -> int:
             "selected_urls": result.selected_urls,
             "saved_pages": saved_pages,
             "notes": result.notes,
+            "crawl_errors": result.crawl_errors,
         },
     )
     print(f"Deep Agent job succeeded: request_id={request_id}, saved_pages={len(saved_pages)}")

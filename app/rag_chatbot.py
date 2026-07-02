@@ -11,6 +11,7 @@ import bs4
 import requests
 from langchain_core.documents import Document
 from langchain_core.language_models.llms import LLM
+from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -520,6 +521,46 @@ Rules:
         # 4. 今回のやり取りを長期メモリへ保存します。
         self.memory.add_interaction(question, answer, user_id=user_id)
         # 5. UIで根拠を表示できるようにsource一覧を返します。
+        sources = sorted({doc.metadata.get("source", "") for doc in docs if doc.metadata.get("source")})
+        return RAGResponse(answer=answer, sources=sources)
+
+    def answer_from_docs_multimodal(
+        self,
+        question: str,
+        docs: list[Document],
+        multimodal_content: list[dict],
+        user_id: str | None = None,
+    ) -> RAGResponse:
+        memory = self.memory.search(question, user_id=user_id)
+        system_prompt = """You are a recipe inference assistant specializing in Japanese home cooking.
+Use the retrieved recipe reference context below and any attached image evidence.
+If the context is insufficient, say that the recipe database does not contain enough information and explain what image observations are still useful.
+
+Rules:
+- Do not mix up recipes with similar names.
+- Include ingredients, clear steps, and practical cooking notes when possible.
+- Explain relevant differences from similar Japanese dishes when useful.
+- Mention source URLs briefly at the end.
+- Detect the user's language from their latest question and answer in that same language unless they ask otherwise.
+- Use the user's long-term memory only for preferences, dietary constraints, and continuity.
+- Do not include hidden reasoning, chain-of-thought, or <think> blocks in the answer.
+
+Long-term user memory:
+{memory}
+
+Context:
+{context}""".format(
+            memory=memory or "No relevant user memory found.",
+            context=format_docs(docs),
+        )
+        response = self.llm.invoke(
+            [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=multimodal_content),
+            ]
+        )
+        answer = strip_hidden_reasoning(str(response.content))
+        self.memory.add_interaction(question, answer, user_id=user_id)
         sources = sorted({doc.metadata.get("source", "") for doc in docs if doc.metadata.get("source")})
         return RAGResponse(answer=answer, sources=sources)
 

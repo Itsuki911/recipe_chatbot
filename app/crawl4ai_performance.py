@@ -39,6 +39,11 @@ class Crawl4AIPerformanceResult:
     timings: dict[str, float]
     success: bool
     error: str | None = None
+    progress_messages: list[str] | None = None
+    model_id: str = ""
+    extraction_mode: str = "llm"
+    rate_limited: bool = False
+    fallback_reason: str = ""
 
 
 def _run_async(coro):
@@ -160,15 +165,73 @@ def _is_empty_extraction(value: str) -> bool:
     return parsed in ({}, []) or parsed is None
 
 
-async def crawl_and_extract_with_llm(url: str, user_request: str) -> tuple[str, int, int]:
+def is_rate_limit_error(exc: Exception) -> bool:
+    message = str(exc).lower()
+    return any(
+        marker in message
+        for marker in (
+            "openrouterratelimiterror",
+            "rate limit",
+            "rate-limited",
+            "free-models-per-day",
+            "quota",
+            "usage limit",
+            "provider returned error",
+        )
+    )
+
+
+def active_crawl4ai_model_id() -> str:
+    from app.openrouter import get_active_openrouter_model, validate_free_openrouter_model
+
+    model_id = get_active_openrouter_model()
+    validate_free_openrouter_model(model_id)
+    return model_id
+
+
+async def crawl_plain_content(url: str) -> tuple[str, int, int]:
+    from crawl4ai import AsyncWebCrawler, BrowserConfig, CacheMode, CrawlerRunConfig
+
+    crawl_config = CrawlerRunConfig(
+        cache_mode=CacheMode.BYPASS,
+        page_timeout=80000,
+        word_count_threshold=1,
+    )
+    async with AsyncWebCrawler(config=BrowserConfig(headless=True)) as crawler:
+        result = await crawler.arun(url=url, config=crawl_config)
+    if not result.success:
+        raise RuntimeError(result.error_message or "crawl4ai plain extraction failed.")
+
+    markdown = str(result.markdown or "").strip()
+    cleaned_html = str(result.cleaned_html or "").strip()
+    if markdown:
+        text = markdown
+    else:
+        text = bs4.BeautifulSoup(cleaned_html, "html.parser").get_text("\n", strip=True)
+    text = re.sub(r"\n{3,}", "\n\n", text).strip()
+    if not text:
+        raise RuntimeError("crawl4ai plain extraction returned empty content.")
+    preview = text[:5000]
+    payload = {
+        "title": "Fallback non-LLM crawl result",
+        "summary": preview,
+        "key_points": [],
+        "useful_details": [
+            "OpenRouter free model制限に達したため、LLM抽出ではなく通常抽出で表示しました。",
+            f"Source URL: {url}",
+        ],
+    }
+    return json.dumps(payload, ensure_ascii=False, indent=2), len(markdown), len(cleaned_html)
+
+
+async def crawl_and_extract_with_llm(url: str, user_request: str, model_id: str | None = None) -> tuple[str, int, int]:
     # 公式資料のLLMExtractionStrategy例に沿って、crawl4aiでクロールとLLM抽出を同時に実行します。
     from crawl4ai import AsyncWebCrawler, BrowserConfig, CacheMode, CrawlerRunConfig, LLMConfig
     from crawl4ai import LLMExtractionStrategy
 
     from app.openrouter import validate_free_openrouter_model
 
-    provider = config.CRAWL4AI_LLM_PROVIDER
-    model_id = provider.removeprefix("openrouter/")
+    model_id = model_id or active_crawl4ai_model_id()
     validate_free_openrouter_model(model_id)
     provider = f"openrouter/{model_id}"
     api_token = config.OPENROUTER_API_KEY
@@ -205,24 +268,49 @@ async def crawl_and_extract_with_llm(url: str, user_request: str) -> tuple[str, 
     return extracted, len(str(result.markdown or "")), len(str(result.cleaned_html or ""))
 
 
-def run_crawl4ai_performance_check(user_request: str, max_results: int = 5) -> Crawl4AIPerformanceResult:
+def run_crawl4ai_performance_check(user_request: str, max_results: int = 5, progress_callback=None) -> Crawl4AIPerformanceResult:
     if not user_request.strip():
         raise ValueError("user_request is required.")
     started = time.perf_counter()
     timings: dict[str, float] = {}
+    progress_messages: list[str] = []
+
+    def report(message: str) -> None:
+        progress_messages.append(message)
+        if progress_callback:
+            progress_callback(message)
+
     try:
+        model_id = active_crawl4ai_model_id()
+        extraction_mode = "llm"
+        rate_limited = False
+        fallback_reason = ""
+        report(f"Crawl4AI LLM抽出モデル: {model_id}")
+        report("ユーザー要望から検索クエリを作成しています。")
         step_started = time.perf_counter()
-        search_query = build_search_query(user_request)
+        try:
+            search_query = build_search_query(user_request)
+        except Exception as exc:
+            if not is_rate_limit_error(exc):
+                raise
+            rate_limited = True
+            extraction_mode = "plain_fallback"
+            fallback_reason = f"Search query generation rate limit: {type(exc).__name__}: {exc}"
+            search_query = user_request
+            report("検索クエリ生成でOpenRouter free model制限に達したため、入力文をそのまま検索に使います。")
         timings["query_generation_sec"] = time.perf_counter() - step_started
 
+        report(f"検索クエリを作成しました: {search_query}")
         step_started = time.perf_counter()
         candidate_urls = discover_urls_for_query(search_query, max_results=max_results)
         timings["search_sec"] = time.perf_counter() - step_started
 
+        report(f"検索結果から候補URLを{len(candidate_urls)}件見つけました。")
         step_started = time.perf_counter()
         selected_url = select_best_url(user_request, search_query, candidate_urls)
         timings["url_selection_sec"] = time.perf_counter() - step_started
 
+        report(f"最初に試すURLを選びました: {selected_url}")
         step_started = time.perf_counter()
         attempted_urls: list[str] = []
         extraction_errors: list[str] = []
@@ -232,14 +320,29 @@ def run_crawl4ai_performance_check(user_request: str, max_results: int = 5) -> C
         ordered_urls = [selected_url] + [url for url in candidate_urls if url != selected_url]
         for url in ordered_urls:
             attempted_urls.append(url)
+            report(f"crawl4aiでページを取得し、LLM抽出を試しています: {url}")
             try:
-                extracted_content, markdown_chars, cleaned_html_chars = _run_async(
-                    crawl_and_extract_with_llm(url, user_request)
-                )
+                if rate_limited:
+                    report("すでにOpenRouter制限を検出しているため、通常抽出を実行します。")
+                    extracted_content, markdown_chars, cleaned_html_chars = _run_async(crawl_plain_content(url))
+                else:
+                    extracted_content, markdown_chars, cleaned_html_chars = _run_async(
+                        crawl_and_extract_with_llm(url, user_request, model_id=model_id)
+                    )
                 selected_url = url
+                report("抽出に成功しました。結果を整形して表示します。")
                 break
             except Exception as exc:
                 extraction_errors.append(f"{url}: {type(exc).__name__}: {exc}")
+                if is_rate_limit_error(exc):
+                    rate_limited = True
+                    extraction_mode = "plain_fallback"
+                    fallback_reason = f"{type(exc).__name__}: {exc}"
+                    report("OpenRouter free model制限に達したため、LLM抽出ではなく通常抽出に切り替えます。")
+                    extracted_content, markdown_chars, cleaned_html_chars = _run_async(crawl_plain_content(url))
+                    selected_url = url
+                    break
+                report(f"このURLでは抽出できませんでした。次の候補を試します: {type(exc).__name__}")
         else:
             raise RuntimeError("All candidate URLs failed.\n" + "\n".join(extraction_errors[:5]))
         timings["crawl_and_extract_sec"] = time.perf_counter() - step_started
@@ -256,9 +359,15 @@ def run_crawl4ai_performance_check(user_request: str, max_results: int = 5) -> C
             cleaned_html_chars=cleaned_html_chars,
             timings=timings,
             success=True,
+            progress_messages=progress_messages,
+            model_id=model_id,
+            extraction_mode=extraction_mode,
+            rate_limited=rate_limited,
+            fallback_reason=fallback_reason,
         )
     except Exception as exc:
         timings["total_sec"] = time.perf_counter() - started
+        report(f"処理を完了できませんでした: {type(exc).__name__}")
         return Crawl4AIPerformanceResult(
             user_request=user_request,
             search_query=locals().get("search_query", ""),
@@ -271,4 +380,9 @@ def run_crawl4ai_performance_check(user_request: str, max_results: int = 5) -> C
             timings=timings,
             success=False,
             error=f"{type(exc).__name__}: {exc}",
+            progress_messages=progress_messages,
+            model_id=locals().get("model_id", ""),
+            extraction_mode=locals().get("extraction_mode", "llm"),
+            rate_limited=locals().get("rate_limited", False) or is_rate_limit_error(exc),
+            fallback_reason=locals().get("fallback_reason", ""),
         )
