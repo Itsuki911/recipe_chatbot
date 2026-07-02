@@ -5,6 +5,7 @@ import base64
 import time
 import uuid
 from datetime import datetime, timezone
+from html import escape
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -49,7 +50,7 @@ except ImportError:
 
 
 # Streamlitページ全体の設定です。最初のStreamlit命令として呼ぶ必要があります。
-st.set_page_config(page_title="Recipe RAG Chatbot", page_icon="🍱", layout="wide")
+st.set_page_config(page_title="Recipe RAG Chatbot", layout="wide")
 
 
 @st.cache_resource(show_spinner="Loading recipe knowledge base...")
@@ -61,21 +62,390 @@ def load_chatbot(force_rebuild_index: bool = False, llm_backend: str | None = No
     return RecipeRAGChatbot(force_rebuild_index=force_rebuild_index, llm_backend=llm_backend)
 
 def apply_styles() -> None:
-    # 画面全体の幅、サイドバー色、source表示用chipだけをCSSで軽く整えます。
+    # 画面全体の幅、色、入力、チャット、source表示をCSSで整えます。
     st.markdown(
         """
         <style>
-        .block-container { max-width: 1160px; padding-top: 1.4rem; }
-        [data-testid="stSidebar"] { background: #f7f3ed; }
-        .source-chip {
-            display: inline-block; padding: 0.2rem 0.5rem; margin: 0.1rem;
-            border: 1px solid #dfd6c7; border-radius: 999px; font-size: 0.78rem;
-            color: #5f5141; background: #fffaf2;
+        :root {
+            --recipe-primary: #9A3412;
+            --recipe-primary-strong: #7C2D12;
+            --recipe-secondary: #C2410C;
+            --recipe-accent: #059669;
+            --recipe-bg: #FFFBEB;
+            --recipe-surface: #FFF7ED;
+            --recipe-card: #FFFFFF;
+            --recipe-muted: #F8F2F0;
+            --recipe-border: #F2D8C9;
+            --recipe-text: #0F172A;
+            --recipe-subtle: #6B4F3F;
+            --recipe-ring: rgba(154, 52, 18, 0.28);
+            --recipe-shadow: 0 18px 45px rgba(154, 52, 18, 0.10);
         }
-        .chat-limit-note { color: #6f6254; font-size: 0.86rem; }
+
+        html, body, [data-testid="stAppViewContainer"] {
+            background:
+                radial-gradient(circle at 12% 0%, rgba(251, 146, 60, 0.18), transparent 30rem),
+                linear-gradient(180deg, #FFFBEB 0%, #FFF7ED 42%, #FFFFFF 100%);
+            color: var(--recipe-text);
+        }
+
+        .block-container {
+            max-width: 1180px;
+            padding-top: 1.15rem;
+            padding-bottom: 5.5rem;
+        }
+
+        [data-testid="stHeader"] { background: transparent; }
+        [data-testid="stToolbar"] { right: 1rem; }
+
+        [data-testid="stSidebar"] {
+            background:
+                linear-gradient(180deg, #431407 0%, #7C2D12 48%, #9A3412 100%);
+            border-right: 1px solid rgba(255, 237, 213, 0.24);
+        }
+
+        [data-testid="stSidebar"] * {
+            color: #FFF7ED;
+        }
+
+        [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p,
+        [data-testid="stSidebar"] .stCaptionContainer,
+        [data-testid="stSidebar"] label,
+        [data-testid="stSidebar"] small {
+            color: rgba(255, 247, 237, 0.76) !important;
+        }
+
+        [data-testid="stSidebar"] [data-testid="stExpander"] {
+            background: rgba(255, 247, 237, 0.10);
+            border: 1px solid rgba(255, 237, 213, 0.22);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        [data-testid="stSidebar"] input,
+        [data-testid="stSidebar"] textarea {
+            background: rgba(255, 251, 235, 0.96) !important;
+            color: #1F2937 !important;
+            border: 1px solid rgba(255, 237, 213, 0.64) !important;
+        }
+
+        [data-testid="stSidebar"] .stButton button {
+            background: rgba(255, 251, 235, 0.96) !important;
+            color: #7C2D12 !important;
+            border-color: rgba(255, 237, 213, 0.72) !important;
+        }
+
+        [data-testid="stSidebar"] .stButton button p,
+        [data-testid="stSidebar"] .stButton button span {
+            color: #7C2D12 !important;
+        }
+
+        .recipe-brand {
+            padding: 0.35rem 0 1rem;
+        }
+
+        .recipe-brand__kicker {
+            color: #FDBA74;
+            font-size: 0.72rem;
+            font-weight: 800;
+            letter-spacing: 0;
+            text-transform: uppercase;
+        }
+
+        .recipe-brand__title {
+            color: #FFF7ED;
+            font-size: 1.55rem;
+            line-height: 1.1;
+            font-weight: 850;
+            margin-top: 0.25rem;
+        }
+
+        .recipe-brand__copy {
+            color: rgba(255, 247, 237, 0.78);
+            font-size: 0.88rem;
+            line-height: 1.55;
+            margin-top: 0.55rem;
+        }
+
+        .recipe-hero {
+            position: relative;
+            overflow: hidden;
+            background:
+                linear-gradient(135deg, rgba(154, 52, 18, 0.96), rgba(194, 65, 12, 0.88)),
+                linear-gradient(90deg, #9A3412, #C2410C);
+            border: 1px solid rgba(154, 52, 18, 0.14);
+            border-radius: 8px;
+            box-shadow: var(--recipe-shadow);
+            padding: clamp(1.15rem, 2.6vw, 2rem);
+            margin: 0.1rem 0 1.15rem;
+        }
+
+        .recipe-hero:after {
+            content: "";
+            position: absolute;
+            inset: auto -8rem -10rem auto;
+            width: 22rem;
+            height: 22rem;
+            background:
+                linear-gradient(45deg, transparent 0 42%, rgba(255, 247, 237, 0.16) 42% 58%, transparent 58% 100%),
+                linear-gradient(-45deg, transparent 0 42%, rgba(255, 237, 213, 0.18) 42% 58%, transparent 58% 100%);
+            transform: rotate(12deg);
+        }
+
+        .recipe-hero__content {
+            position: relative;
+            z-index: 1;
+            max-width: 760px;
+        }
+
+        .recipe-eyebrow {
+            color: #FED7AA;
+            font-size: 0.74rem;
+            font-weight: 850;
+            letter-spacing: 0;
+            text-transform: uppercase;
+            margin-bottom: 0.45rem;
+        }
+
+        .recipe-hero h1 {
+            color: #FFFFFF;
+            font-size: clamp(2rem, 5vw, 4.2rem);
+            line-height: 0.98;
+            font-weight: 900;
+            margin: 0;
+        }
+
+        .recipe-hero p {
+            color: rgba(255, 247, 237, 0.86);
+            font-size: clamp(1rem, 1.8vw, 1.18rem);
+            line-height: 1.7;
+            max-width: 720px;
+            margin: 0.9rem 0 0;
+        }
+
+        .recipe-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.55rem;
+            margin-top: 1.2rem;
+        }
+
+        .recipe-badge {
+            display: inline-flex;
+            align-items: center;
+            min-height: 2.35rem;
+            padding: 0.5rem 0.78rem;
+            border: 1px solid rgba(255, 237, 213, 0.35);
+            border-radius: 8px;
+            background: rgba(255, 251, 235, 0.14);
+            color: #FFF7ED;
+            font-size: 0.86rem;
+            font-weight: 750;
+            backdrop-filter: blur(8px);
+        }
+
+        .recipe-section-title {
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+            margin: 1.25rem 0 0.45rem;
+        }
+
+        .recipe-section-title__bar {
+            width: 0.42rem;
+            height: 1.8rem;
+            border-radius: 999px;
+            background: var(--recipe-secondary);
+        }
+
+        .recipe-section-title h2 {
+            font-size: clamp(1.35rem, 2.4vw, 2rem);
+            line-height: 1.15;
+            margin: 0;
+            color: var(--recipe-text);
+        }
+
+        .recipe-section-copy {
+            color: var(--recipe-subtle);
+            line-height: 1.65;
+            margin: 0 0 1rem;
+            max-width: 760px;
+        }
+
+        .recipe-status-row {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.8rem;
+            margin: 0.9rem 0 1.15rem;
+        }
+
+        .recipe-status-card {
+            background: rgba(255, 255, 255, 0.82);
+            border: 1px solid var(--recipe-border);
+            border-radius: 8px;
+            padding: 0.85rem 0.95rem;
+            box-shadow: 0 10px 28px rgba(154, 52, 18, 0.07);
+        }
+
+        .recipe-status-card__label {
+            color: var(--recipe-subtle);
+            font-size: 0.78rem;
+            font-weight: 800;
+            letter-spacing: 0;
+            text-transform: uppercase;
+        }
+
+        .recipe-status-card__value {
+            color: var(--recipe-text);
+            font-size: 0.96rem;
+            font-weight: 800;
+            margin-top: 0.28rem;
+            overflow-wrap: anywhere;
+        }
+
+        .source-chip {
+            display: inline-block;
+            padding: 0.32rem 0.58rem;
+            margin: 0.14rem;
+            border: 1px solid var(--recipe-border);
+            border-radius: 999px;
+            font-size: 0.78rem;
+            color: var(--recipe-primary-strong);
+            background: #FFF7ED;
+            max-width: 100%;
+            overflow-wrap: anywhere;
+        }
+
+        .chat-limit-note {
+            display: inline-flex;
+            align-items: center;
+            min-height: 2.35rem;
+            padding: 0.52rem 0.78rem;
+            border: 1px solid var(--recipe-border);
+            border-radius: 8px;
+            background: #FFF7ED;
+            color: var(--recipe-primary-strong);
+            font-size: 0.86rem;
+            font-weight: 750;
+            margin: 0.25rem 0 0.85rem;
+        }
+
+        .stButton button,
+        div[data-testid="stFormSubmitButton"] button {
+            border-radius: 8px !important;
+            min-height: 2.8rem;
+            border: 1px solid var(--recipe-border) !important;
+            font-weight: 800 !important;
+            transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease, border-color 180ms ease;
+            cursor: pointer;
+        }
+
+        .stButton button:hover,
+        div[data-testid="stFormSubmitButton"] button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 22px rgba(154, 52, 18, 0.14);
+            border-color: rgba(154, 52, 18, 0.5) !important;
+        }
+
+        .stButton button[kind="primary"],
+        button[kind="primary"] {
+            background: linear-gradient(135deg, var(--recipe-primary), var(--recipe-secondary)) !important;
+            border-color: var(--recipe-primary) !important;
+            color: #FFFFFF !important;
+        }
+
+        button:focus,
+        input:focus,
+        textarea:focus,
+        [role="radiogroup"] label:focus-within {
+            outline: 3px solid var(--recipe-ring) !important;
+            outline-offset: 2px !important;
+            box-shadow: none !important;
+        }
+
+        input, textarea, [data-baseweb="select"] > div {
+            border-radius: 8px !important;
+            border-color: var(--recipe-border) !important;
+        }
+
+        textarea, input {
+            background: rgba(255, 255, 255, 0.92) !important;
+        }
+
+        [data-testid="stExpander"] {
+            border: 1px solid var(--recipe-border);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.78);
+            box-shadow: 0 8px 22px rgba(154, 52, 18, 0.06);
+            overflow: hidden;
+        }
+
+        [data-testid="stMetric"] {
+            background: rgba(255, 255, 255, 0.84);
+            border: 1px solid var(--recipe-border);
+            border-radius: 8px;
+            padding: 0.85rem 0.95rem;
+            box-shadow: 0 8px 22px rgba(154, 52, 18, 0.06);
+        }
+
+        [data-testid="stChatMessage"] {
+            border-radius: 8px;
+            border: 1px solid rgba(242, 216, 201, 0.78);
+            background: rgba(255, 255, 255, 0.78);
+            box-shadow: 0 8px 24px rgba(154, 52, 18, 0.06);
+        }
+
+        [data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]) {
+            background: #FFF7ED;
+        }
+
+        [data-testid="stChatInput"] {
+            background: rgba(255, 251, 235, 0.82);
+            border-top: 1px solid rgba(242, 216, 201, 0.82);
+            backdrop-filter: blur(12px);
+        }
+
+        [data-testid="stChatInput"] textarea {
+            min-height: 3rem !important;
+        }
+
+        hr {
+            border-color: var(--recipe-border) !important;
+            opacity: 1;
+        }
+
+        .stDataFrame, [data-testid="stTable"] {
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--recipe-border);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                scroll-behavior: auto !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
         @media (max-width: 720px) {
-            .block-container { padding-left: 0.85rem; padding-right: 0.85rem; padding-top: 0.8rem; }
-            [data-testid="stSidebar"] { background: #fbf8f2; }
+            .block-container {
+                padding-left: 0.85rem;
+                padding-right: 0.85rem;
+                padding-top: 0.8rem;
+            }
+            .recipe-hero {
+                padding: 1.05rem;
+                margin-top: 0;
+            }
+            .recipe-badge {
+                width: 100%;
+                justify-content: center;
+            }
+            .recipe-status-row {
+                grid-template-columns: 1fr;
+            }
             div[data-testid="column"] { width: 100% !important; flex: 1 1 100% !important; }
             .stButton button { width: 100%; }
         }
@@ -83,6 +453,72 @@ def apply_styles() -> None:
         """,
         unsafe_allow_html=True,
     )
+
+
+def render_sidebar_brand() -> None:
+    st.markdown(
+        """
+        <div class="recipe-brand">
+            <div class="recipe-brand__kicker">Recipe Intelligence</div>
+            <div class="recipe-brand__title">Recipe RAG</div>
+            <div class="recipe-brand__copy">保存済みレシピ参照を検索し、和食の調理判断を一緒に組み立てます。</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_app_header(mode: str) -> None:
+    mode_copy = {
+        "OpenRouter RAG Chat": "保存済みレシピ参照と画像を組み合わせ、根拠のある調理提案を返します。",
+        "OpenRouter Chat": "RAGを使わず、軽い相談や下ごしらえの確認に使えます。",
+        "past conversation": "過去の相談を日付とAI種別で振り返れます。",
+        "Crawl4AI Check": "Web抽出の挙動と取得品質を確認できます。",
+        "Adaptive Crawl": "サイト内を段階的に探索し、調査結果を整理します。",
+    }
+    st.markdown(
+        f"""
+        <section class="recipe-hero">
+            <div class="recipe-hero__content">
+                <div class="recipe-eyebrow">Orange Edition</div>
+                <h1>Recipe Inference RAG</h1>
+                <p>{escape(mode_copy.get(mode, "レシピ調査と会話を一つの作業面で扱えます。"))}</p>
+                <div class="recipe-badges">
+                    <span class="recipe-badge">OpenRouter free model</span>
+                    <span class="recipe-badge">Local recipe retrieval</span>
+                    <span class="recipe-badge">Cloud cost guarded</span>
+                </div>
+            </div>
+        </section>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_section_intro(title: str, copy: str) -> None:
+    st.markdown(
+        f"""
+        <div class="recipe-section-title">
+            <span class="recipe-section-title__bar"></span>
+            <h2>{escape(title)}</h2>
+        </div>
+        <p class="recipe-section-copy">{escape(copy)}</p>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_status_cards(items: list[tuple[str, str]]) -> None:
+    cards = "\n".join(
+        (
+            '<div class="recipe-status-card">'
+            f'<div class="recipe-status-card__label">{escape(label)}</div>'
+            f'<div class="recipe-status-card__value">{escape(value)}</div>'
+            "</div>"
+        )
+        for label, value in items
+    )
+    st.markdown(f'<div class="recipe-status-row">{cards}</div>', unsafe_allow_html=True)
 
 
 def show_recipe_source_error(exc: Exception) -> None:
@@ -213,11 +649,17 @@ def render_sidebar() -> tuple[bool, str]:
     from app.scraper import save_recipe_page_from_url
 
     with st.sidebar:
-        st.title("Recipe RAG")
-        st.caption("保存済みレシピ参照を検索して、和食レシピ推論に特化して回答します。")
+        render_sidebar_brand()
         # このボタンを押した場合、次回RAG実行時に既存indexではなく文書から作り直します。
-        force_rebuild = st.button("RAGインデックスを再作成")
+        force_rebuild = st.button("RAGインデックスを再作成", use_container_width=True)
         # このradioがメイン画面の「ページ切り替え」として働きます。
+        mode_labels = {
+            "OpenRouter RAG Chat": "RAGチャット",
+            "OpenRouter Chat": "クイック相談",
+            "past conversation": "会話履歴",
+            "Crawl4AI Check": "抽出チェック",
+            "Adaptive Crawl": "サイト調査",
+        }
         mode = st.radio(
             "モード",
             [
@@ -228,6 +670,7 @@ def render_sidebar() -> tuple[bool, str]:
                 "Adaptive Crawl",
             ],
             label_visibility="collapsed",
+            format_func=lambda value: mode_labels.get(value, value),
         )
         st.divider()
 
@@ -514,7 +957,7 @@ def render_sources(sources: list[str]) -> None:
         return
     st.caption("Sources")
     st.markdown(
-        " ".join(f'<span class="source-chip">{url}</span>' for url in sources),
+        " ".join(f'<span class="source-chip">{escape(url)}</span>' for url in sources),
         unsafe_allow_html=True,
     )
 
@@ -875,7 +1318,7 @@ def render_past_conversation() -> None:
         fetch_chat_conversations_fallback,
     )
 
-    st.subheader("past conversation")
+    render_section_intro("会話履歴", "保存された相談を時系列で確認し、調理メモや過去の判断をすぐに再利用できます。")
     selected_id = st.session_state.get("selected_conversation_id")
 
     if selected_id:
@@ -1041,8 +1484,14 @@ def run_deep_agent_only_when_needed(
 
 
 def render_openrouter_rag_chat(force_rebuild: bool) -> None:
-    st.subheader("OpenRouter RAG Chat")
-    st.caption(f"Active free model: `{active_openrouter_model_label()}`")
+    render_section_intro("RAGチャット", "保存済みレシピ参照を優先して検索し、必要なときだけ追加調査へ進みます。")
+    render_status_cards(
+        [
+            ("Model", active_openrouter_model_label()),
+            ("Retrieval", "Recipe RAG"),
+            ("Question limit", f"{chat_turns_remaining('messages')} / {MAX_CHAT_TURNS}"),
+        ]
+    )
     if st.session_state.get("conversation_save_error"):
         st.warning("直近の会話はPostgreSQLへ保存できなかったため、ローカル退避履歴に保存しています。")
         show_postgres_recovery_hint()
@@ -1308,8 +1757,14 @@ def render_openrouter_rag_chat(force_rebuild: bool) -> None:
 def render_openrouter_chat() -> None:
     from app.openrouter_chatbot import ask_openrouter, ask_openrouter_multimodal
 
-    st.subheader("OpenRouter Chat")
-    st.caption(f"RAGなし。Active free model: `{active_openrouter_model_label()}`")
+    render_section_intro("クイック相談", "RAGを使わず、献立の方向性や下ごしらえの確認を軽く相談できます。")
+    render_status_cards(
+        [
+            ("Model", active_openrouter_model_label()),
+            ("Retrieval", "Off"),
+            ("Question limit", f"{chat_turns_remaining('openrouter_messages')} / {MAX_CHAT_TURNS}"),
+        ]
+    )
     if st.session_state.get("conversation_save_error"):
         st.warning("直近の会話はPostgreSQLへ保存できなかったため、ローカル退避履歴に保存しています。")
         show_postgres_recovery_hint()
@@ -1390,8 +1845,14 @@ def render_crawl4ai_check() -> None:
     # crawl4aiの検索クエリ生成、URL発見、LLM抽出、処理時間を確認するページです。
     from app.crawl4ai_performance import run_crawl4ai_performance_check
 
-    st.subheader("Crawl4AI performance check")
-    st.caption("URLを直接指定せず、ユーザー要望から検索クエリを作成して、候補URLを選び、crawl4aiでLLM抽出します。")
+    render_section_intro("抽出チェック", "検索、候補URL選定、crawl4ai抽出の品質と処理時間を確認します。")
+    render_status_cards(
+        [
+            ("Mode", "Quality check"),
+            ("Model policy", "Free only"),
+            ("Output", "Extraction report"),
+        ]
+    )
     user_request = st.text_area(
         "欲しい情報",
         "OpenRouterのfree model一覧と使い分けを知りたい",
@@ -1473,8 +1934,14 @@ def render_adaptive_crawl() -> None:
     # crawl4ai AdaptiveCrawlerで、サイト内リンクを辿りながら調査範囲を広げます。
     from app.adaptive_crawler import adaptive_architecture_preview, run_adaptive_site_research
 
-    st.subheader("Adaptive site research")
-    st.caption("crawl4ai Adaptive Crawlingで、調査クエリに対してサイト内URLを辿り、十分な情報量に達するまで探索します。")
+    render_section_intro("サイト調査", "サイト内URLを段階的に辿り、調査クエリに対して十分な材料が集まるまで探索します。")
+    render_status_cards(
+        [
+            ("Crawler", "Adaptive"),
+            ("Scope", "Site links"),
+            ("Output", "Research synthesis"),
+        ]
+    )
 
     start_url = st.text_input("開始URL", value="https://www.justonecookbook.com/")
     query = st.text_area(
@@ -1560,7 +2027,7 @@ def main() -> None:
     force_rebuild, mode = render_sidebar()
     ensure_chat_history()
     ensure_openrouter_chat_history()
-    st.title("Recipe Inference RAG Chatbot")
+    render_app_header(mode)
 
     # サイドバーのradioで選ばれたモードごとに、描画関数を切り替えます。
     if mode == "OpenRouter RAG Chat":
