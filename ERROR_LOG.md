@@ -1291,3 +1291,3649 @@ RuntimeError: Selected URLs could not be saved.
 save_selected_pages: RuntimeError: No pages were saved.
 https://www.justonecookbook.com/5-easy-japanese-dishes/: ValueError: Recipe text is too short to index safely (0 chars).
 ```
+## 2026-06-05 16:03:09 JST
+
+- Context: Qwen RAG chat response generation
+- Error Type: AttributeError
+- Message: 'QwenRAGChatbot' object has no attribute 'retrieve'
+- Python: 3.10.12
+
+### Details
+
+```text
+question=だし巻き卵のレシピを教えて
+```
+
+### Traceback
+
+```text
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 529, in render_qwen_rag_chat
+    docs = chatbot.retrieve(question)
+AttributeError: 'QwenRAGChatbot' object has no attribute 'retrieve'. Did you mean: 'retriever'?
+```
+## 2026-06-05 16:13:18 JST
+
+- Context: DB DataFrame view
+- Error Type: OperationalError
+- Message: (psycopg2.OperationalError) connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+- Python: 3.10.12
+
+### Traceback
+
+```text
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 808, in render_dataframe_mode
+    df = recipes_dataframe()
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/view_db_dataframe.py", line 10, in recipes_dataframe
+    df = pd.DataFrame(fetch_recipes())
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 72, in fetch_recipes
+    init_db(engine)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 42, in init_db
+    metadata.create_all(engine)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/sql/schema.py", line 5930, in create_all
+    bind._run_ddl_visitor(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3269, in _run_ddl_visitor
+    with self.begin() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/contextlib.py", line 135, in __enter__
+    return next(self.gen)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3259, in begin
+    with self.connect() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3295, in connect
+    return self._connection_cls(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 146, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 2450, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+```
+## 2026-06-05 16:36:26 JST
+
+- Context: Unhandled Streamlit UI error
+- Error Type: ImportError
+- Message: cannot import name 'save_chat_conversation' from 'app.database' (/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py)
+- Python: 3.10.12
+
+### Traceback
+
+```text
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 980, in <module>
+    main()
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 964, in main
+    render_qwen_rag_chat(force_rebuild)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 682, in render_qwen_rag_chat
+    persist_current_conversation(
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 373, in persist_current_conversation
+    from app.database import save_chat_conversation
+ImportError: cannot import name 'save_chat_conversation' from 'app.database' (/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py)
+```
+## 2026-06-05 16:39:29 JST
+
+- Context: Chat conversation PostgreSQL save
+- Error Type: OperationalError
+- Message: (psycopg2.OperationalError) connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+- Python: 3.10.12
+
+### Details
+
+```text
+ai_type=Qwen_RAG
+```
+
+### Traceback
+
+```text
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 376, in persist_current_conversation
+    conversation_id = save_chat_conversation(
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 98, in save_chat_conversation
+    init_db(engine)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 53, in init_db
+    metadata.create_all(engine)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/sql/schema.py", line 5930, in create_all
+    bind._run_ddl_visitor(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3269, in _run_ddl_visitor
+    with self.begin() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/contextlib.py", line 135, in __enter__
+    return next(self.gen)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3259, in begin
+    with self.connect() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3295, in connect
+    return self._connection_cls(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 146, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 2450, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+```
+## 2026-06-05 16:41:34 JST
+
+- Context: Chat conversation PostgreSQL save
+- Error Type: OperationalError
+- Message: (psycopg2.OperationalError) connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+- Python: 3.10.12
+
+### Details
+
+```text
+ai_type=Qwen_RAG
+```
+
+### Traceback
+
+```text
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 376, in persist_current_conversation
+    conversation_id = save_chat_conversation(
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 98, in save_chat_conversation
+    init_db(engine)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 53, in init_db
+    metadata.create_all(engine)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/sql/schema.py", line 5930, in create_all
+    bind._run_ddl_visitor(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3269, in _run_ddl_visitor
+    with self.begin() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/contextlib.py", line 135, in __enter__
+    return next(self.gen)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3259, in begin
+    with self.connect() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3295, in connect
+    return self._connection_cls(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 146, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 2450, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+```
+## 2026-06-05 16:48:23 JST
+
+- Context: Chat conversation PostgreSQL save
+- Error Type: OperationalError
+- Message: (psycopg2.OperationalError) connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+- Python: 3.10.12
+
+### Details
+
+```text
+ai_type=Qwen_RAG
+```
+
+### Traceback
+
+```text
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 376, in persist_current_conversation
+    conversation_id = save_chat_conversation(
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 98, in save_chat_conversation
+    init_db(engine)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 53, in init_db
+    metadata.create_all(engine)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/sql/schema.py", line 5930, in create_all
+    bind._run_ddl_visitor(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3269, in _run_ddl_visitor
+    with self.begin() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/contextlib.py", line 135, in __enter__
+    return next(self.gen)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3259, in begin
+    with self.connect() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3295, in connect
+    return self._connection_cls(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 146, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 2450, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+```
+## 2026-06-05 16:49:12 JST
+
+- Context: Chat conversation PostgreSQL save
+- Error Type: OperationalError
+- Message: (psycopg2.OperationalError) connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+- Python: 3.10.12
+
+### Details
+
+```text
+ai_type=Qwen_RAG
+```
+
+### Traceback
+
+```text
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 376, in persist_current_conversation
+    conversation_id = save_chat_conversation(
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 98, in save_chat_conversation
+    init_db(engine)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 53, in init_db
+    metadata.create_all(engine)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/sql/schema.py", line 5930, in create_all
+    bind._run_ddl_visitor(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3269, in _run_ddl_visitor
+    with self.begin() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/contextlib.py", line 135, in __enter__
+    return next(self.gen)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3259, in begin
+    with self.connect() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3295, in connect
+    return self._connection_cls(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 146, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 2450, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+```
+## 2026-06-05 16:49:24 JST
+
+- Context: Chat conversation PostgreSQL save
+- Error Type: OperationalError
+- Message: (psycopg2.OperationalError) connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+- Python: 3.10.12
+
+### Details
+
+```text
+ai_type=Qwen_RAG
+```
+
+### Traceback
+
+```text
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 376, in persist_current_conversation
+    conversation_id = save_chat_conversation(
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 98, in save_chat_conversation
+    init_db(engine)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 53, in init_db
+    metadata.create_all(engine)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/sql/schema.py", line 5930, in create_all
+    bind._run_ddl_visitor(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3269, in _run_ddl_visitor
+    with self.begin() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/contextlib.py", line 135, in __enter__
+    return next(self.gen)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3259, in begin
+    with self.connect() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3295, in connect
+    return self._connection_cls(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 146, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 2450, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+```
+## 2026-06-05 18:41:38 JST
+
+- Context: Chat conversation PostgreSQL save
+- Error Type: OperationalError
+- Message: (psycopg2.OperationalError) connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+- Python: 3.10.12
+
+### Details
+
+```text
+ai_type=OpenRouter_RAG
+```
+
+### Traceback
+
+```text
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 413, in persist_current_conversation
+    conversation_id = save_chat_conversation(
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 111, in save_chat_conversation
+    init_db(engine)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 66, in init_db
+    metadata.create_all(engine)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/sql/schema.py", line 5930, in create_all
+    bind._run_ddl_visitor(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3269, in _run_ddl_visitor
+    with self.begin() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/contextlib.py", line 135, in __enter__
+    return next(self.gen)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3259, in begin
+    with self.connect() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3295, in connect
+    return self._connection_cls(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 146, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 2450, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+```
+## 2026-06-05 18:42:32 JST
+
+- Context: Chat conversation PostgreSQL save
+- Error Type: OperationalError
+- Message: (psycopg2.OperationalError) connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+- Python: 3.10.12
+
+### Details
+
+```text
+ai_type=OpenRouter_RAG
+```
+
+### Traceback
+
+```text
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 413, in persist_current_conversation
+    conversation_id = save_chat_conversation(
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 111, in save_chat_conversation
+    init_db(engine)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 66, in init_db
+    metadata.create_all(engine)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/sql/schema.py", line 5930, in create_all
+    bind._run_ddl_visitor(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3269, in _run_ddl_visitor
+    with self.begin() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/contextlib.py", line 135, in __enter__
+    return next(self.gen)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3259, in begin
+    with self.connect() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3295, in connect
+    return self._connection_cls(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 146, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 2450, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+```
+## 2026-06-05 18:43:25 JST
+
+- Context: Chat conversation PostgreSQL save
+- Error Type: OperationalError
+- Message: (psycopg2.OperationalError) connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+- Python: 3.10.12
+
+### Details
+
+```text
+ai_type=OpenRouter
+```
+
+### Traceback
+
+```text
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 413, in persist_current_conversation
+    conversation_id = save_chat_conversation(
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 111, in save_chat_conversation
+    init_db(engine)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 66, in init_db
+    metadata.create_all(engine)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/sql/schema.py", line 5930, in create_all
+    bind._run_ddl_visitor(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3269, in _run_ddl_visitor
+    with self.begin() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/contextlib.py", line 135, in __enter__
+    return next(self.gen)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3259, in begin
+    with self.connect() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3295, in connect
+    return self._connection_cls(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 146, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 2450, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+```
+## 2026-06-05 18:43:56 JST
+
+- Context: Chat conversation PostgreSQL save
+- Error Type: OperationalError
+- Message: (psycopg2.OperationalError) connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+- Python: 3.10.12
+
+### Details
+
+```text
+ai_type=OpenRouter
+```
+
+### Traceback
+
+```text
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 413, in persist_current_conversation
+    conversation_id = save_chat_conversation(
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 111, in save_chat_conversation
+    init_db(engine)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 66, in init_db
+    metadata.create_all(engine)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/sql/schema.py", line 5930, in create_all
+    bind._run_ddl_visitor(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3269, in _run_ddl_visitor
+    with self.begin() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/contextlib.py", line 135, in __enter__
+    return next(self.gen)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3259, in begin
+    with self.connect() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3295, in connect
+    return self._connection_cls(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 146, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 2450, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+```
+## 2026-06-05 18:44:03 JST
+
+- Context: Past conversation list
+- Error Type: OperationalError
+- Message: (psycopg2.OperationalError) connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+- Python: 3.10.12
+
+### Traceback
+
+```text
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 460, in render_past_conversation
+    conversations = fetch_chat_conversations()
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 154, in fetch_chat_conversations
+    init_db(engine)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 66, in init_db
+    metadata.create_all(engine)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/sql/schema.py", line 5930, in create_all
+    bind._run_ddl_visitor(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3269, in _run_ddl_visitor
+    with self.begin() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/contextlib.py", line 135, in __enter__
+    return next(self.gen)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3259, in begin
+    with self.connect() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3295, in connect
+    return self._connection_cls(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 146, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 2450, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+```
+## 2026-06-05 18:44:33 JST
+
+- Context: Chat conversation PostgreSQL save
+- Error Type: OperationalError
+- Message: (psycopg2.OperationalError) connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+- Python: 3.10.12
+
+### Details
+
+```text
+ai_type=OpenRouter_RAG
+```
+
+### Traceback
+
+```text
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 413, in persist_current_conversation
+    conversation_id = save_chat_conversation(
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 111, in save_chat_conversation
+    init_db(engine)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 66, in init_db
+    metadata.create_all(engine)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/sql/schema.py", line 5930, in create_all
+    bind._run_ddl_visitor(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3269, in _run_ddl_visitor
+    with self.begin() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/contextlib.py", line 135, in __enter__
+    return next(self.gen)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3259, in begin
+    with self.connect() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3295, in connect
+    return self._connection_cls(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 146, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 2450, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+```
+## 2026-06-05 18:44:35 JST
+
+- Context: Chat conversation PostgreSQL save
+- Error Type: OperationalError
+- Message: (psycopg2.OperationalError) connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+- Python: 3.10.12
+
+### Details
+
+```text
+ai_type=OpenRouter_RAG
+```
+
+### Traceback
+
+```text
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 413, in persist_current_conversation
+    conversation_id = save_chat_conversation(
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 111, in save_chat_conversation
+    init_db(engine)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 66, in init_db
+    metadata.create_all(engine)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/sql/schema.py", line 5930, in create_all
+    bind._run_ddl_visitor(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3269, in _run_ddl_visitor
+    with self.begin() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/contextlib.py", line 135, in __enter__
+    return next(self.gen)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3259, in begin
+    with self.connect() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3295, in connect
+    return self._connection_cls(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 146, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 2450, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+```
+## 2026-06-05 18:44:40 JST
+
+- Context: Chat conversation PostgreSQL save
+- Error Type: OperationalError
+- Message: (psycopg2.OperationalError) connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+- Python: 3.10.12
+
+### Details
+
+```text
+ai_type=OpenRouter_RAG
+```
+
+### Traceback
+
+```text
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 413, in persist_current_conversation
+    conversation_id = save_chat_conversation(
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 111, in save_chat_conversation
+    init_db(engine)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 66, in init_db
+    metadata.create_all(engine)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/sql/schema.py", line 5930, in create_all
+    bind._run_ddl_visitor(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3269, in _run_ddl_visitor
+    with self.begin() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/contextlib.py", line 135, in __enter__
+    return next(self.gen)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3259, in begin
+    with self.connect() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3295, in connect
+    return self._connection_cls(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 146, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 2450, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+```
+## 2026-06-05 18:57:40 JST
+
+- Context: Chat conversation PostgreSQL save
+- Error Type: OperationalError
+- Message: (psycopg2.OperationalError) connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+- Python: 3.10.12
+
+### Details
+
+```text
+ai_type=OpenRouter_RAG
+```
+
+### Traceback
+
+```text
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 413, in persist_current_conversation
+    try:
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 111, in save_chat_conversation
+    engine: Engine | None = None,
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 66, in init_db
+    def init_db(engine: Engine | None = None) -> None:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/sql/schema.py", line 5930, in create_all
+    bind._run_ddl_visitor(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3269, in _run_ddl_visitor
+    with self.begin() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/contextlib.py", line 135, in __enter__
+    return next(self.gen)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3259, in begin
+    with self.connect() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3295, in connect
+    return self._connection_cls(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 146, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 2450, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+```
+## 2026-06-05 19:01:04 JST
+
+- Context: Past conversation list
+- Error Type: OperationalError
+- Message: (psycopg2.OperationalError) connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+- Python: 3.10.12
+
+### Traceback
+
+```text
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 483, in render_past_conversation
+    conversations = fetch_chat_conversations()
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 267, in fetch_chat_conversations
+    init_db(engine)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 69, in init_db
+    metadata.create_all(engine)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/sql/schema.py", line 5930, in create_all
+    bind._run_ddl_visitor(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3269, in _run_ddl_visitor
+    with self.begin() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/contextlib.py", line 135, in __enter__
+    return next(self.gen)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3259, in begin
+    with self.connect() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3295, in connect
+    return self._connection_cls(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 146, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 2450, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+```
+## 2026-06-05 19:01:57 JST
+
+- Context: Past conversation list
+- Error Type: OperationalError
+- Message: (psycopg2.OperationalError) connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+- Python: 3.10.12
+
+### Traceback
+
+```text
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 483, in render_past_conversation
+    conversations = fetch_chat_conversations()
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 267, in fetch_chat_conversations
+    init_db(engine)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 69, in init_db
+    metadata.create_all(engine)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/sql/schema.py", line 5930, in create_all
+    bind._run_ddl_visitor(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3269, in _run_ddl_visitor
+    with self.begin() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/contextlib.py", line 135, in __enter__
+    return next(self.gen)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3259, in begin
+    with self.connect() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3295, in connect
+    return self._connection_cls(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 146, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 2450, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+```
+## 2026-06-05 19:06:03 JST
+
+- Context: Past conversation list
+- Error Type: OperationalError
+- Message: (psycopg2.OperationalError) connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+- Python: 3.10.12
+
+### Traceback
+
+```text
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 489, in render_past_conversation
+    conversations = fetch_chat_conversations()
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 267, in fetch_chat_conversations
+    init_db(engine)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 69, in init_db
+    metadata.create_all(engine)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/sql/schema.py", line 5930, in create_all
+    bind._run_ddl_visitor(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3269, in _run_ddl_visitor
+    with self.begin() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/contextlib.py", line 135, in __enter__
+    return next(self.gen)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3259, in begin
+    with self.connect() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3295, in connect
+    return self._connection_cls(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 146, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 2450, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "localhost" (127.0.0.1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (::1), port 5433 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+```
+## 2026-07-02 17:08:02 JST
+
+- Context: Chat conversation PostgreSQL save
+- Error Type: OperationalError
+- Message: (psycopg2.OperationalError) connection to server at "aws-1-ap-northeast-1.pooler.supabase.com" (13.114.6.6), port 6543 failed: FATAL:  (ENOTFOUND) tenant/user postgres.upitebifibajlcgvvrqh not found
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+- Python: 3.10.12
+
+### Details
+
+```text
+ai_type=OpenRouter_RAG
+```
+
+### Traceback
+
+```text
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "aws-1-ap-northeast-1.pooler.supabase.com" (13.114.6.6), port 6543 failed: FATAL:  (ENOTFOUND) tenant/user postgres.upitebifibajlcgvvrqh not found
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 764, in persist_current_conversation
+    conversation_id = save_chat_conversation(
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 114, in save_chat_conversation
+    init_db(engine)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 69, in init_db
+    metadata.create_all(engine)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/sql/schema.py", line 5930, in create_all
+    bind._run_ddl_visitor(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3269, in _run_ddl_visitor
+    with self.begin() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/contextlib.py", line 135, in __enter__
+    return next(self.gen)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3259, in begin
+    with self.connect() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3295, in connect
+    return self._connection_cls(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 146, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 2450, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "aws-1-ap-northeast-1.pooler.supabase.com" (13.114.6.6), port 6543 failed: FATAL:  (ENOTFOUND) tenant/user postgres.upitebifibajlcgvvrqh not found
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+```
+## 2026-07-02 17:09:11 JST
+
+- Context: Chat conversation PostgreSQL save
+- Error Type: OperationalError
+- Message: (psycopg2.OperationalError) connection to server at "aws-1-ap-northeast-1.pooler.supabase.com" (57.182.231.186), port 6543 failed: FATAL:  (ENOTFOUND) tenant/user postgres.upitebifibajlcgvvrqh not found
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+- Python: 3.10.12
+
+### Details
+
+```text
+ai_type=OpenRouter_RAG
+```
+
+### Traceback
+
+```text
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "aws-1-ap-northeast-1.pooler.supabase.com" (57.182.231.186), port 6543 failed: FATAL:  (ENOTFOUND) tenant/user postgres.upitebifibajlcgvvrqh not found
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 764, in persist_current_conversation
+    conversation_id = save_chat_conversation(
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 114, in save_chat_conversation
+    init_db(engine)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 69, in init_db
+    metadata.create_all(engine)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/sql/schema.py", line 5930, in create_all
+    bind._run_ddl_visitor(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3269, in _run_ddl_visitor
+    with self.begin() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/contextlib.py", line 135, in __enter__
+    return next(self.gen)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3259, in begin
+    with self.connect() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3295, in connect
+    return self._connection_cls(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 146, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 2450, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "aws-1-ap-northeast-1.pooler.supabase.com" (57.182.231.186), port 6543 failed: FATAL:  (ENOTFOUND) tenant/user postgres.upitebifibajlcgvvrqh not found
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+```
+## 2026-07-02 17:09:42 JST
+
+- Context: Chat conversation PostgreSQL save
+- Error Type: OperationalError
+- Message: (psycopg2.OperationalError) connection to server at "aws-1-ap-northeast-1.pooler.supabase.com" (13.114.6.6), port 6543 failed: FATAL:  (ENOTFOUND) tenant/user postgres.upitebifibajlcgvvrqh not found
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+- Python: 3.10.12
+
+### Details
+
+```text
+ai_type=OpenRouter_RAG
+```
+
+### Traceback
+
+```text
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "aws-1-ap-northeast-1.pooler.supabase.com" (13.114.6.6), port 6543 failed: FATAL:  (ENOTFOUND) tenant/user postgres.upitebifibajlcgvvrqh not found
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 764, in persist_current_conversation
+    conversation_id = save_chat_conversation(
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 114, in save_chat_conversation
+    init_db(engine)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 69, in init_db
+    metadata.create_all(engine)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/sql/schema.py", line 5930, in create_all
+    bind._run_ddl_visitor(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3269, in _run_ddl_visitor
+    with self.begin() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/contextlib.py", line 135, in __enter__
+    return next(self.gen)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3259, in begin
+    with self.connect() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3295, in connect
+    return self._connection_cls(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 146, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 2450, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "aws-1-ap-northeast-1.pooler.supabase.com" (13.114.6.6), port 6543 failed: FATAL:  (ENOTFOUND) tenant/user postgres.upitebifibajlcgvvrqh not found
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+```
+## 2026-07-02 17:09:52 JST
+
+- Context: Chat conversation PostgreSQL save
+- Error Type: OperationalError
+- Message: (psycopg2.OperationalError) connection to server at "aws-1-ap-northeast-1.pooler.supabase.com" (13.114.6.6), port 6543 failed: FATAL:  (ENOTFOUND) tenant/user postgres.upitebifibajlcgvvrqh not found
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+- Python: 3.10.12
+
+### Details
+
+```text
+ai_type=OpenRouter_RAG
+```
+
+### Traceback
+
+```text
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "aws-1-ap-northeast-1.pooler.supabase.com" (13.114.6.6), port 6543 failed: FATAL:  (ENOTFOUND) tenant/user postgres.upitebifibajlcgvvrqh not found
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 764, in persist_current_conversation
+    conversation_id = save_chat_conversation(
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 114, in save_chat_conversation
+    init_db(engine)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 69, in init_db
+    metadata.create_all(engine)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/sql/schema.py", line 5930, in create_all
+    bind._run_ddl_visitor(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3269, in _run_ddl_visitor
+    with self.begin() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/contextlib.py", line 135, in __enter__
+    return next(self.gen)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3259, in begin
+    with self.connect() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3295, in connect
+    return self._connection_cls(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 146, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 2450, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "aws-1-ap-northeast-1.pooler.supabase.com" (13.114.6.6), port 6543 failed: FATAL:  (ENOTFOUND) tenant/user postgres.upitebifibajlcgvvrqh not found
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+```
+## 2026-07-02 17:11:07 JST
+
+- Context: OpenRouter RAG Deep Agent choice handling
+- Error Type: RuntimeError
+- Message: Install google-cloud-storage to use GCS_BUCKET storage.
+- Python: 3.10.12
+
+### Details
+
+```text
+question=味噌汁のレシピを教えて
+```
+
+### Traceback
+
+```text
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/gcs_storage.py", line 24, in _client
+    from google.cloud import storage
+ModuleNotFoundError: No module named 'google.cloud'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 978, in render_openrouter_rag_chat
+    result, response = run_chat_deep_agent_answer(
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 737, in run_chat_deep_agent_answer
+    cloud_request_id = maybe_start_cloud_deep_agent(question, max_pages=3)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 646, in maybe_start_cloud_deep_agent
+    return start_cloud_deep_agent_collection(question, max_pages=max_pages)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 630, in start_cloud_deep_agent_collection
+    upload_json(
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/gcs_storage.py", line 56, in upload_json
+    return upload_text(
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/gcs_storage.py", line 49, in upload_text
+    bucket = _client().bucket(config.GCS_BUCKET)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/gcs_storage.py", line 26, in _client
+    raise RuntimeError("Install google-cloud-storage to use GCS_BUCKET storage.") from exc
+RuntimeError: Install google-cloud-storage to use GCS_BUCKET storage.
+```
+## 2026-07-02 17:11:08 JST
+
+- Context: Chat conversation PostgreSQL save
+- Error Type: OperationalError
+- Message: (psycopg2.OperationalError) connection to server at "aws-1-ap-northeast-1.pooler.supabase.com" (13.114.6.6), port 6543 failed: FATAL:  (ENOTFOUND) tenant/user postgres.upitebifibajlcgvvrqh not found
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+- Python: 3.10.12
+
+### Details
+
+```text
+ai_type=OpenRouter_RAG
+```
+
+### Traceback
+
+```text
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/gcs_storage.py", line 24, in _client
+    from google.cloud import storage
+ModuleNotFoundError: No module named 'google.cloud'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 978, in render_openrouter_rag_chat
+    result, response = run_chat_deep_agent_answer(
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 737, in run_chat_deep_agent_answer
+    cloud_request_id = maybe_start_cloud_deep_agent(question, max_pages=3)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 646, in maybe_start_cloud_deep_agent
+    return start_cloud_deep_agent_collection(question, max_pages=max_pages)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 630, in start_cloud_deep_agent_collection
+    upload_json(
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/gcs_storage.py", line 56, in upload_json
+    return upload_text(
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/gcs_storage.py", line 49, in upload_text
+    bucket = _client().bucket(config.GCS_BUCKET)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/gcs_storage.py", line 26, in _client
+    raise RuntimeError("Install google-cloud-storage to use GCS_BUCKET storage.") from exc
+RuntimeError: Install google-cloud-storage to use GCS_BUCKET storage.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "aws-1-ap-northeast-1.pooler.supabase.com" (13.114.6.6), port 6543 failed: FATAL:  (ENOTFOUND) tenant/user postgres.upitebifibajlcgvvrqh not found
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 764, in persist_current_conversation
+    conversation_id = save_chat_conversation(
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 114, in save_chat_conversation
+    init_db(engine)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 69, in init_db
+    metadata.create_all(engine)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/sql/schema.py", line 5930, in create_all
+    bind._run_ddl_visitor(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3269, in _run_ddl_visitor
+    with self.begin() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/contextlib.py", line 135, in __enter__
+    return next(self.gen)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3259, in begin
+    with self.connect() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3295, in connect
+    return self._connection_cls(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 146, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 2450, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "aws-1-ap-northeast-1.pooler.supabase.com" (13.114.6.6), port 6543 failed: FATAL:  (ENOTFOUND) tenant/user postgres.upitebifibajlcgvvrqh not found
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+```
+## 2026-07-02 17:12:02 JST
+
+- Context: Chat conversation PostgreSQL save
+- Error Type: OperationalError
+- Message: (psycopg2.OperationalError) connection to server at "aws-1-ap-northeast-1.pooler.supabase.com" (13.114.6.6), port 6543 failed: FATAL:  (ENOTFOUND) tenant/user postgres.upitebifibajlcgvvrqh not found
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+- Python: 3.10.12
+
+### Details
+
+```text
+ai_type=OpenRouter_RAG
+```
+
+### Traceback
+
+```text
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "aws-1-ap-northeast-1.pooler.supabase.com" (13.114.6.6), port 6543 failed: FATAL:  (ENOTFOUND) tenant/user postgres.upitebifibajlcgvvrqh not found
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 764, in persist_current_conversation
+    conversation_id = save_chat_conversation(
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 114, in save_chat_conversation
+    init_db(engine)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 69, in init_db
+    metadata.create_all(engine)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/sql/schema.py", line 5930, in create_all
+    bind._run_ddl_visitor(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3269, in _run_ddl_visitor
+    with self.begin() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/contextlib.py", line 135, in __enter__
+    return next(self.gen)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3259, in begin
+    with self.connect() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3295, in connect
+    return self._connection_cls(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 146, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 2450, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "aws-1-ap-northeast-1.pooler.supabase.com" (13.114.6.6), port 6543 failed: FATAL:  (ENOTFOUND) tenant/user postgres.upitebifibajlcgvvrqh not found
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+```
+## 2026-07-02 17:13:10 JST
+
+- Context: Chat conversation PostgreSQL save
+- Error Type: OperationalError
+- Message: (psycopg2.OperationalError) connection to server at "aws-1-ap-northeast-1.pooler.supabase.com" (57.182.231.186), port 6543 failed: FATAL:  (ENOTFOUND) tenant/user postgres.upitebifibajlcgvvrqh not found
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+- Python: 3.10.12
+
+### Details
+
+```text
+ai_type=OpenRouter_RAG
+```
+
+### Traceback
+
+```text
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "aws-1-ap-northeast-1.pooler.supabase.com" (57.182.231.186), port 6543 failed: FATAL:  (ENOTFOUND) tenant/user postgres.upitebifibajlcgvvrqh not found
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 764, in persist_current_conversation
+    conversation_id = save_chat_conversation(
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 114, in save_chat_conversation
+    init_db(engine)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 69, in init_db
+    metadata.create_all(engine)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/sql/schema.py", line 5930, in create_all
+    bind._run_ddl_visitor(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3269, in _run_ddl_visitor
+    with self.begin() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/contextlib.py", line 135, in __enter__
+    return next(self.gen)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3259, in begin
+    with self.connect() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3295, in connect
+    return self._connection_cls(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 146, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 2450, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "aws-1-ap-northeast-1.pooler.supabase.com" (57.182.231.186), port 6543 failed: FATAL:  (ENOTFOUND) tenant/user postgres.upitebifibajlcgvvrqh not found
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+```
+## 2026-07-02 17:13:29 JST
+
+- Context: OpenRouter RAG Deep Agent choice handling
+- Error Type: RuntimeError
+- Message: Install google-cloud-storage to use GCS_BUCKET storage.
+- Python: 3.10.12
+
+### Details
+
+```text
+question=味噌汁のレシピを考えて
+```
+
+### Traceback
+
+```text
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/gcs_storage.py", line 24, in _client
+    from google.cloud import storage
+ModuleNotFoundError: No module named 'google.cloud'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 978, in render_openrouter_rag_chat
+    result, response = run_chat_deep_agent_answer(
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 737, in run_chat_deep_agent_answer
+    cloud_request_id = maybe_start_cloud_deep_agent(question, max_pages=3)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 646, in maybe_start_cloud_deep_agent
+    return start_cloud_deep_agent_collection(question, max_pages=max_pages)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 630, in start_cloud_deep_agent_collection
+    upload_json(
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/gcs_storage.py", line 56, in upload_json
+    return upload_text(
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/gcs_storage.py", line 49, in upload_text
+    bucket = _client().bucket(config.GCS_BUCKET)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/gcs_storage.py", line 26, in _client
+    raise RuntimeError("Install google-cloud-storage to use GCS_BUCKET storage.") from exc
+RuntimeError: Install google-cloud-storage to use GCS_BUCKET storage.
+```
+## 2026-07-02 17:13:29 JST
+
+- Context: Chat conversation PostgreSQL save
+- Error Type: OperationalError
+- Message: (psycopg2.OperationalError) connection to server at "aws-1-ap-northeast-1.pooler.supabase.com" (13.114.6.6), port 6543 failed: FATAL:  (ENOTFOUND) tenant/user postgres.upitebifibajlcgvvrqh not found
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+- Python: 3.10.12
+
+### Details
+
+```text
+ai_type=OpenRouter_RAG
+```
+
+### Traceback
+
+```text
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/gcs_storage.py", line 24, in _client
+    from google.cloud import storage
+ModuleNotFoundError: No module named 'google.cloud'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 978, in render_openrouter_rag_chat
+    result, response = run_chat_deep_agent_answer(
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 737, in run_chat_deep_agent_answer
+    cloud_request_id = maybe_start_cloud_deep_agent(question, max_pages=3)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 646, in maybe_start_cloud_deep_agent
+    return start_cloud_deep_agent_collection(question, max_pages=max_pages)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 630, in start_cloud_deep_agent_collection
+    upload_json(
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/gcs_storage.py", line 56, in upload_json
+    return upload_text(
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/gcs_storage.py", line 49, in upload_text
+    bucket = _client().bucket(config.GCS_BUCKET)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/gcs_storage.py", line 26, in _client
+    raise RuntimeError("Install google-cloud-storage to use GCS_BUCKET storage.") from exc
+RuntimeError: Install google-cloud-storage to use GCS_BUCKET storage.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "aws-1-ap-northeast-1.pooler.supabase.com" (13.114.6.6), port 6543 failed: FATAL:  (ENOTFOUND) tenant/user postgres.upitebifibajlcgvvrqh not found
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 764, in persist_current_conversation
+    conversation_id = save_chat_conversation(
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 114, in save_chat_conversation
+    init_db(engine)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 69, in init_db
+    metadata.create_all(engine)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/sql/schema.py", line 5930, in create_all
+    bind._run_ddl_visitor(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3269, in _run_ddl_visitor
+    with self.begin() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/contextlib.py", line 135, in __enter__
+    return next(self.gen)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3259, in begin
+    with self.connect() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3295, in connect
+    return self._connection_cls(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 146, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 2450, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "aws-1-ap-northeast-1.pooler.supabase.com" (13.114.6.6), port 6543 failed: FATAL:  (ENOTFOUND) tenant/user postgres.upitebifibajlcgvvrqh not found
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+```
+## 2026-07-02 17:16:37 JST
+
+- Context: Chat conversation PostgreSQL save
+- Error Type: OperationalError
+- Message: (psycopg2.OperationalError) connection to server at "aws-1-ap-northeast-1.pooler.supabase.com" (57.182.231.186), port 6543 failed: FATAL:  (ENOTFOUND) tenant/user postgres.upitebifibajlcgvvrqh not found
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+- Python: 3.10.12
+
+### Details
+
+```text
+ai_type=OpenRouter_RAG
+```
+
+### Traceback
+
+```text
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "aws-1-ap-northeast-1.pooler.supabase.com" (57.182.231.186), port 6543 failed: FATAL:  (ENOTFOUND) tenant/user postgres.upitebifibajlcgvvrqh not found
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 788, in persist_current_conversation
+    conversation_id = save_chat_conversation(
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 114, in save_chat_conversation
+    init_db(engine)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 69, in init_db
+    metadata.create_all(engine)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/sql/schema.py", line 5930, in create_all
+    bind._run_ddl_visitor(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3269, in _run_ddl_visitor
+    with self.begin() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/contextlib.py", line 135, in __enter__
+    return next(self.gen)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3259, in begin
+    with self.connect() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3295, in connect
+    return self._connection_cls(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 146, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 2450, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "aws-1-ap-northeast-1.pooler.supabase.com" (57.182.231.186), port 6543 failed: FATAL:  (ENOTFOUND) tenant/user postgres.upitebifibajlcgvvrqh not found
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+```
+## 2026-07-02 17:19:05 JST
+
+- Context: Crawl4AI performance check
+- Error Type: RuntimeError
+- Message: OpenRouterRateLimitError: Provider returned error
+- Python: 3.10.12
+
+### Traceback
+
+```text
+RuntimeError: OpenRouterRateLimitError: Provider returned error
+```
+## 2026-07-02 17:19:16 JST
+
+- Context: Past conversation list
+- Error Type: OperationalError
+- Message: (psycopg2.OperationalError) connection to server at "aws-1-ap-northeast-1.pooler.supabase.com" (13.114.6.6), port 6543 failed: FATAL:  (ENOTFOUND) tenant/user postgres.upitebifibajlcgvvrqh not found
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+- Python: 3.10.12
+
+### Traceback
+
+```text
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "aws-1-ap-northeast-1.pooler.supabase.com" (13.114.6.6), port 6543 failed: FATAL:  (ENOTFOUND) tenant/user postgres.upitebifibajlcgvvrqh not found
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 879, in render_past_conversation
+    conversations = fetch_chat_conversations()
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 267, in fetch_chat_conversations
+    init_db(engine)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 69, in init_db
+    metadata.create_all(engine)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/sql/schema.py", line 5930, in create_all
+    bind._run_ddl_visitor(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3269, in _run_ddl_visitor
+    with self.begin() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/contextlib.py", line 135, in __enter__
+    return next(self.gen)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3259, in begin
+    with self.connect() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3295, in connect
+    return self._connection_cls(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 146, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 2450, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "aws-1-ap-northeast-1.pooler.supabase.com" (13.114.6.6), port 6543 failed: FATAL:  (ENOTFOUND) tenant/user postgres.upitebifibajlcgvvrqh not found
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+```
+## 2026-07-02 17:28:50 JST
+
+- Context: Chat conversation PostgreSQL save
+- Error Type: OperationalError
+- Message: (psycopg2.OperationalError) connection to server at "aws-1-ap-northeast-1.pooler.supabase.com" (13.114.6.6), port 6543 failed: FATAL:  (ENOTFOUND) tenant/user postgres.upitebifibajlcgvvrqh not found
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+- Python: 3.10.12
+
+### Details
+
+```text
+ai_type=OpenRouter_RAG
+```
+
+### Traceback
+
+```text
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "aws-1-ap-northeast-1.pooler.supabase.com" (13.114.6.6), port 6543 failed: FATAL:  (ENOTFOUND) tenant/user postgres.upitebifibajlcgvvrqh not found
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 830, in persist_current_conversation
+    conversation_id = save_chat_conversation(
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 114, in save_chat_conversation
+    init_db(engine)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/database.py", line 69, in init_db
+    metadata.create_all(engine)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/sql/schema.py", line 5930, in create_all
+    bind._run_ddl_visitor(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3269, in _run_ddl_visitor
+    with self.begin() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/contextlib.py", line 135, in __enter__
+    return next(self.gen)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3259, in begin
+    with self.connect() as conn:
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3295, in connect
+    return self._connection_cls(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 146, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 2450, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "aws-1-ap-northeast-1.pooler.supabase.com" (13.114.6.6), port 6543 failed: FATAL:  (ENOTFOUND) tenant/user postgres.upitebifibajlcgvvrqh not found
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+```
+## 2026-07-02 17:29:50 JST
+
+- Context: OpenRouter RAG chat response generation
+- Error Type: RuntimeError
+- Message: Install google-cloud-storage to use GCS_BUCKET storage.
+- Python: 3.10.12
+
+### Details
+
+```text
+question=味噌汁のレシピを教えて
+stage=OpenRouter RAG chat, model=openai/gpt-oss-120b:free, status_code=unknown, message=Install google-cloud-storage to use GCS_BUCKET storage.
+```
+
+### Traceback
+
+```text
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/deep_agent.py", line 38, in _run_async
+    asyncio.get_running_loop()
+RuntimeError: no running event loop
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/gcs_storage.py", line 24, in _client
+    from google.cloud import storage
+ModuleNotFoundError: No module named 'google.cloud'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 1170, in render_openrouter_rag_chat
+    result, response = run_chat_deep_agent_answer(
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app.py", line 782, in run_chat_deep_agent_answer
+    result = run_deep_agent_recipe_collection_with_details(question, max_pages=3)
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/deep_agent.py", line 396, in run_deep_agent_recipe_collection_with_details
+    def run_deep_agent_recipe_collection_with_details(query: str, max_pages: int = 3) -> DeepAgentResult:
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/deep_agent.py", line 40, in _run_async
+    return asyncio.run(coro)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/asyncio/runners.py", line 44, in run
+    return loop.run_until_complete(main)
+  File "/Users/adachiitsuki/.pyenv/versions/3.10.12/lib/python3.10/asyncio/base_events.py", line 649, in run_until_complete
+    return future.result()
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/deep_agent.py", line 362, in _run_agentic_crawler
+    if url not in fallback_urls:
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/deep_agent.py", line 257, in _fetch_reference_page_fallback
+    text = re.sub(r"\n{3,}", "\n\n", content.get_text("\n", strip=True)).strip()
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/deep_agent.py", line 230, in _save_reference_page
+    try:
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/gcs_storage.py", line 49, in upload_text
+  File "/Users/adachiitsuki/Desktop/recipe_chatbot/app/gcs_storage.py", line 26, in _client
+    raise RuntimeError("Install google-cloud-storage to use GCS_BUCKET storage.") from exc
+RuntimeError: Install google-cloud-storage to use GCS_BUCKET storage.
+```

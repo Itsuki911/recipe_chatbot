@@ -29,6 +29,19 @@ def ask_openrouter(question: str, system_prompt: str = DEFAULT_OPENROUTER_SYSTEM
     return strip_hidden_reasoning(str(response.content))
 
 
+def ask_openrouter_multimodal(content, system_prompt: str = DEFAULT_OPENROUTER_SYSTEM_PROMPT) -> str:
+    from langchain_core.messages import HumanMessage, SystemMessage
+
+    llm = build_openrouter_free_llm()
+    response = llm.invoke(
+        [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=content),
+        ]
+    )
+    return strip_hidden_reasoning(str(response.content))
+
+
 class OpenRouterRAGChatbot:
     def __init__(self, force_rebuild_index: bool = False) -> None:
         # 共通RAGシステム: TurboVec indexを読み込み、関連チャンク上位4件を検索します。

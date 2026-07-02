@@ -28,6 +28,16 @@ def _client():
     return storage.Client()
 
 
+def is_available() -> bool:
+    if not is_enabled():
+        return False
+    try:
+        _client()
+    except Exception:
+        return False
+    return True
+
+
 def _object_name(name: str) -> str:
     cleaned = name.strip().lstrip("/")
     if not config.GCS_PREFIX:

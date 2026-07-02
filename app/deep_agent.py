@@ -30,6 +30,7 @@ class DeepAgentResult:
     selected_urls: list[str]
     saved_pages: list[SavedPage]
     notes: str
+    crawl_errors: list[str]
 
 
 def _run_async(coro):
@@ -79,6 +80,25 @@ def _json_array_or_fallback(text: str, fallback: list[str]) -> list[str]:
 
 def _build_llm():
     return build_chat_llm(config.DEEP_AGENT_LLM_BACKEND, temperature=0.0)
+
+
+def _urls_from_text(value: str) -> list[str]:
+    urls: list[str] = []
+    for match in re.findall(r"https?://[^\s)>\"]+", value):
+        url = match.rstrip(".,。)")
+        if url not in urls:
+            urls.append(url)
+    return urls
+
+
+def _fallback_reference_urls(query: str) -> list[str]:
+    candidates = _urls_from_text(query)
+    for url in config.JOC_RECIPE_URLS:
+        if url not in candidates:
+            candidates.append(url)
+    if config.JOC_START_URL not in candidates:
+        candidates.append(config.JOC_START_URL)
+    return candidates
 
 
 def plan_search_queries(query: str, max_pages: int) -> list[str]:
@@ -204,18 +224,21 @@ def _save_reference_page(url: str, html: str, text: str, output_dir: Path = WEB_
     text_path = output_dir / f"{slug}.txt"
     html_path.write_text(html or f"<pre>{text}</pre>", encoding="utf-8")
     text_path.write_text(f"{title}\n\nSource: {url}\n\n{text}\n", encoding="utf-8")
-    from app.gcs_storage import is_enabled, upload_text
+    from app.gcs_storage import is_available, upload_text
 
-    if is_enabled():
-        upload_text(
-            f"web_recipe_reference/{slug}.html",
-            html or f"<pre>{text}</pre>",
-            content_type="text/html; charset=utf-8",
-        )
-        upload_text(
-            f"web_recipe_reference/{slug}.txt",
-            f"{title}\n\nSource: {url}\n\n{text}\n",
-        )
+    if is_available():
+        try:
+            upload_text(
+                f"web_recipe_reference/{slug}.html",
+                html or f"<pre>{text}</pre>",
+                content_type="text/html; charset=utf-8",
+            )
+            upload_text(
+                f"web_recipe_reference/{slug}.txt",
+                f"{title}\n\nSource: {url}\n\n{text}\n",
+            )
+        except Exception:
+            pass
     return SavedPage(url=url, path=text_path, title=title, text_chars=len(text))
 
 
@@ -294,6 +317,9 @@ async def _run_agentic_crawler(query: str, max_pages: int) -> DeepAgentResult:
     keywords = plan_crawl_keywords(query, search_queries)
     candidate_urls: list[str] = []
     seen: set[str] = set()
+    for url in _urls_from_text(query):
+        seen.add(url)
+        candidate_urls.append(url)
     for search_query in search_queries:
         try:
             for url in discover_web_urls(search_query, max_results=6):
@@ -302,10 +328,12 @@ async def _run_agentic_crawler(query: str, max_pages: int) -> DeepAgentResult:
                     candidate_urls.append(url)
         except Exception:
             continue
+    if not candidate_urls:
+        candidate_urls = _fallback_reference_urls(query)
 
     selected_urls = select_seed_urls(query, candidate_urls, max_seeds=min(3, max_pages))
     if not selected_urls:
-        raise RuntimeError("Agentic Crawler could not discover seed URLs for the query.")
+        selected_urls = candidate_urls[: min(3, max_pages)] or _fallback_reference_urls(query)[: min(3, max_pages)]
 
     saved_pages: list[SavedPage] = []
     errors: list[str] = []
@@ -346,7 +374,8 @@ async def _run_agentic_crawler(query: str, max_pages: int) -> DeepAgentResult:
 
     notes = (
         f"Saved {len(saved_pages)} page(s) to {WEB_RECIPE_REFERENCE_DIR}. "
-        f"Keywords: {', '.join(keywords[:8])}"
+        f"Keywords: {', '.join(keywords[:8])}. "
+        f"Candidates: {len(candidate_urls)}. Crawl errors: {len(errors)}."
     )
     return DeepAgentResult(
         query=query,
@@ -355,6 +384,7 @@ async def _run_agentic_crawler(query: str, max_pages: int) -> DeepAgentResult:
         selected_urls=selected_urls,
         saved_pages=saved_pages,
         notes=notes,
+        crawl_errors=errors,
     )
 
 

@@ -157,6 +157,7 @@ def synthesize_adaptive_findings(
     llm = build_chat_llm(config.STRUCTURED_LLM_BACKEND, temperature=0.0)
     prompt = (
         "You are a senior web research agent. Use the crawled pages to answer the research query. "
+        "Detect the user's language from the research query and write the synthesis in that same language unless they ask otherwise. "
         "Explain what was found, cite URLs inline, identify gaps or uncertainty, and propose the next internal URLs "
         "or subtopics that should be explored if the investigation continues. Do not invent facts.\n\n"
         f"Start URL: {start_url}\n"

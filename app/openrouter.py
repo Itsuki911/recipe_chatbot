@@ -13,10 +13,18 @@ from app import config
 
 
 class OpenRouterRateLimitError(RuntimeError):
-    def __init__(self, model: str, message: str, status_code: int = 429) -> None:
+    def __init__(
+        self,
+        model: str,
+        message: str,
+        status_code: int = 429,
+        payload: dict[str, Any] | None = None,
+    ) -> None:
         super().__init__(message)
         self.model = model
         self.status_code = status_code
+        self.payload = payload or {}
+        self.message = message
 
 
 @dataclass(frozen=True)
@@ -213,7 +221,9 @@ def _message_to_openrouter(message: BaseMessage) -> dict[str, Any]:
         "function": "tool",
     }
     role = role_map.get(message.type, "user")
-    content = message.content if isinstance(message.content, str) else str(message.content)
+    content = message.content
+    if not isinstance(content, (str, list)):
+        content = str(content)
     payload: dict[str, Any] = {"role": role, "content": content}
     tool_call_id = getattr(message, "tool_call_id", None)
     if tool_call_id:
@@ -233,6 +243,22 @@ def _record_usage(model: str, usage: dict[str, Any] | None, status: str, raw_jso
         )
     except Exception:
         return
+
+
+def _is_openrouter_rate_limit_response(status_code: int, payload: dict[str, Any], text: str) -> bool:
+    message = (_error_message(payload) or text or "").lower()
+    return status_code in {402, 429} or any(
+        marker in message
+        for marker in (
+            "rate limit",
+            "rate-limited",
+            "free-models-per-day",
+            "quota",
+            "credits",
+            "insufficient",
+            "usage limit",
+        )
+    )
 
 
 class OpenRouterFreeChatModel(BaseChatModel):
@@ -270,11 +296,16 @@ class OpenRouterFreeChatModel(BaseChatModel):
             json=payload,
             timeout=self.timeout or config.OPENROUTER_TIMEOUT_SECONDS,
         )
-        if response.status_code == 429:
+        if _is_openrouter_rate_limit_response(response.status_code, _safe_json(response), response.text):
             raw = _safe_json(response)
             _record_usage(model, None, "rate_limited", raw)
             message = _error_message(raw) or response.text or "OpenRouter free model rate limit reached."
-            raise OpenRouterRateLimitError(model=model, message=message)
+            raise OpenRouterRateLimitError(
+                model=model,
+                message=message,
+                status_code=response.status_code,
+                payload=raw,
+            )
         if response.status_code >= 400:
             raw = _safe_json(response)
             _record_usage(model, None, f"http_{response.status_code}", raw)
