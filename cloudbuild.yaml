@@ -35,6 +35,7 @@ steps:
       - --region=${_REGION}
       - --port=8501
       - --service-account=${_WEB_SERVICE_ACCOUNT}
+      - --memory=2Gi
       - --set-env-vars=GCS_BUCKET=${_GCS_BUCKET},GCS_PREFIX=recipe-chatbot,CLOUD_RUN_PROJECT_ID=$PROJECT_ID,CLOUD_RUN_REGION=${_REGION},CLOUD_RUN_DEEP_AGENT_JOB=${_JOB_NAME},MEM0_ENABLED=false
       - --set-secrets=OPENROUTER_API_KEY=openrouter-api-key:latest,DATABASE_URL=supabase-database-url:latest
       - --allow-unauthenticated

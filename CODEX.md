@@ -157,6 +157,11 @@ Tables:
   - 反映commit: `bd646de`
   - 配信image: `asia-northeast1-docker.pkg.dev/recipe-chatbot-499108/recipe-chatbot/app:bd646de`
   - ブラウザで `画像入力` と `このchatは最大5回まで質問できます。残り 5 回。` が表示されることをdesktop/mobile幅で確認。
+- プロンプト送信後にフリーズして初期状態へ戻る原因:
+  - Cloud Runログで `Memory limit of 512 MiB exceeded with 531 MiB used` を確認。
+  - Web Service `recipe-chatbot-web` がCloud Run default memory 512MiBのままで、RAG/embedding/index読み込み時にコンテナが落ち、Streamlit sessionが初期化されていた。
+  - 直接 `gcloud run services update recipe-chatbot-web --project recipe-chatbot-499108 --region asia-northeast1 --memory=2Gi` を実行し、revision `recipe-chatbot-web-00004-78x` を100% trafficにした。
+  - 再発防止として `cloudbuild.yaml` のWeb Service deploy stepにも `--memory=2Gi` を追加する。
 
 ### 2026-06-17
 
@@ -327,6 +332,16 @@ https://recipe-chatbot-web-bvyktzzbcq-an.a.run.app/
 - Cloud Buildが `SUCCESS` だがCloud Runが旧image:
   - Cloud Run service describeで `spec.template.spec.containers[0].image` を確認する。
   - build triggerのdeploy step、またはCloud Run更新権限/region/service名を確認する。
+- プロンプト送信後にフリーズして初期画面へ戻る:
+  - まずCloud Runログでmemory exceededを確認する。
+  - 確認コマンド:
+    ```bash
+    gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="recipe-chatbot-web"' \
+      --project recipe-chatbot-499108 \
+      --limit 50 \
+      --format='table(timestamp,severity,textPayload)'
+    ```
+  - `Memory limit of 512 MiB exceeded` が出た場合は、Web Service memoryを2Gi以上にする。
 - Cloud Runが新imageだがURLが旧表示:
   - revisionがReadyになるまで待つ。
   - ブラウザをreloadする。
