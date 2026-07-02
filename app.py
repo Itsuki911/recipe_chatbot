@@ -967,6 +967,78 @@ def render_past_conversation() -> None:
             st.divider()
 
 
+def load_openrouter_rag_chatbot_for_question(should_rebuild: bool):
+    chatbot = load_chatbot(should_rebuild, "openrouter")
+    chatbot = ensure_rag_chatbot_capabilities(
+        chatbot,
+        lambda: load_chatbot(should_rebuild, "openrouter"),
+    )
+    st.session_state.rebuild_index_next = False
+    return chatbot
+
+
+def retrieve_and_assess_openrouter_context(
+    *,
+    chatbot,
+    question: str,
+    image_payloads: list[dict[str, str]],
+    llm_steps: list[str],
+) -> tuple[str, list[Any], bool]:
+    retrieval_question = build_image_prompt_text(question, image_payloads)
+    llm_steps.append("RAG検索: ベクトルDBから関連チャンク取得")
+    docs = chatbot.retrieve(retrieval_question)
+    llm_steps.append("RAG context判定: OpenRouter free modelで十分性を判定")
+    has_context = chatbot.has_sufficient_context(retrieval_question, docs)
+    return retrieval_question, docs, has_context
+
+
+def create_openrouter_rag_response(
+    *,
+    chatbot,
+    question: str,
+    docs: list[Any],
+    image_payloads: list[dict[str, str]],
+    llm_steps: list[str],
+):
+    llm_steps.append("mem0検索: 好み/制約の長期記憶を検索")
+    llm_steps.append("RAG回答生成: OpenRouter free modelで回答作成")
+    if image_payloads and hasattr(chatbot, "answer_from_docs_multimodal"):
+        response = chatbot.answer_from_docs_multimodal(
+            question,
+            docs,
+            build_multimodal_content(question, image_payloads),
+        )
+    else:
+        response = chatbot.answer_from_docs(question, docs)
+    llm_steps.append("mem0保存: 今回の会話を長期記憶へ保存")
+    return response
+
+
+def run_deep_agent_only_when_needed(
+    *,
+    reason: str,
+    question: str,
+    image_payloads: list[dict[str, str]],
+    force_rebuild: bool,
+    llm_steps: list[str],
+):
+    if reason == "missing_data":
+        llm_steps.append("Deep Agent必要判定: RAGデータが未準備")
+        spinner_text = "RAGデータが不足しているため、Deep Agentで自動収集してから回答します..."
+    else:
+        llm_steps.append("Deep Agent必要判定: RAG文脈が不十分")
+        spinner_text = "ベクトルDBに十分な情報がないため、Deep Agentで自動収集してから回答します..."
+
+    llm_steps.append("Deep Agent検索計画: 必要時のみ実行")
+    with st.spinner(spinner_text):
+        result, response = run_chat_deep_agent_answer(
+            question=build_image_prompt_text(question, image_payloads),
+            force_rebuild=force_rebuild,
+            load_current_chatbot=lambda rebuild: load_chatbot(rebuild, "openrouter"),
+        )
+    return result, response
+
+
 
 def render_openrouter_rag_chat(force_rebuild: bool) -> None:
     st.subheader("OpenRouter RAG Chat")
@@ -1095,17 +1167,17 @@ def render_openrouter_rag_chat(force_rebuild: bool) -> None:
         return
 
     should_rebuild = force_rebuild or st.session_state.get("rebuild_index_next", False)
-    if not recipe_knowledge_ready(should_rebuild):
-        with st.chat_message("assistant"):
-            try:
-                llm_steps.append("RAG準備確認: ベクトルDB/保存済みレシピ参照が不足")
-                llm_steps.append("Deep Agent検索計画: 自動実行")
-                with st.spinner("RAGデータが不足しているため、Deep Agentで自動収集してから回答します..."):
-                    result, response = run_chat_deep_agent_answer(
-                        question=build_image_prompt_text(question, image_payloads),
-                        force_rebuild=True,
-                        load_current_chatbot=lambda rebuild: load_chatbot(rebuild, "openrouter"),
-                    )
+    with st.chat_message("assistant"):
+        try:
+            llm_steps.append("RAG準備確認: 保存済みデータ/indexの状態を確認")
+            if not recipe_knowledge_ready(should_rebuild):
+                result, response = run_deep_agent_only_when_needed(
+                    reason="missing_data",
+                    question=question,
+                    image_payloads=image_payloads,
+                    force_rebuild=True,
+                    llm_steps=llm_steps,
+                )
                 if result is None and response is None:
                     st.info("Deep Agent Cloud Run Jobを開始しました。完了後に「状態を更新して回答を続ける」を押してください。")
                     render_llm_trace("今回のLLM/ツール実行段階", llm_steps)
@@ -1124,15 +1196,65 @@ def render_openrouter_rag_chat(force_rebuild: bool) -> None:
                     conversation_key="openrouter_rag_conversation_id",
                 )
                 return
-            except Exception as exc:
-                defer_for_openrouter_model_switch(
-                    exc,
-                    {
-                        "type": "openrouter_rag",
-                        "question": question,
-                        "image_payloads": image_payloads,
-                    },
+
+            with st.spinner("RAG chatbotを準備しています..."):
+                llm_steps.append("RAG準備: chatbot/indexを読み込み")
+                chatbot = load_openrouter_rag_chatbot_for_question(should_rebuild)
+
+            with st.spinner("レシピページを検索して、RAGで十分に答えられるか判定中..."):
+                _, docs, has_context = retrieve_and_assess_openrouter_context(
+                    chatbot=chatbot,
+                    question=question,
+                    image_payloads=image_payloads,
+                    llm_steps=llm_steps,
                 )
+
+            if not has_context:
+                llm_steps.append("RAG context判定結果: 不十分")
+                result, response = run_deep_agent_only_when_needed(
+                    reason="insufficient_context",
+                    question=question,
+                    image_payloads=image_payloads,
+                    force_rebuild=True,
+                    llm_steps=llm_steps,
+                )
+                if result is None and response is None:
+                    st.info("Deep Agent Cloud Run Jobを開始しました。完了後に「状態を更新して回答を続ける」を押してください。")
+                    render_llm_trace("今回のLLM/ツール実行段階", llm_steps)
+                    st.stop()
+                llm_steps.append(f"Deep Agent保存: {len(result.saved_pages)}件")
+                llm_steps.append("RAG回答生成: Deep Agent収集後の文脈で実行")
+                prefix = f"Deep Agentで{len(result.saved_pages)}件の参照を保存しました。\n\n"
+                stream_markdown_text(prefix + response.answer)
+                render_sources(response.sources)
+                render_llm_trace("今回のLLM/ツール実行段階", llm_steps)
+                st.session_state.rebuild_index_next = False
+                st.session_state.messages.append({"role": "assistant", "content": prefix + response.answer})
+                persist_current_conversation(
+                    ai_type="OpenRouter_RAG",
+                    messages_key="messages",
+                    conversation_key="openrouter_rag_conversation_id",
+                )
+                return
+
+            with st.spinner("RAG文脈を使ってOpenRouter free modelで回答を作成中..."):
+                response = create_openrouter_rag_response(
+                    chatbot=chatbot,
+                    question=question,
+                    docs=docs,
+                    image_payloads=image_payloads,
+                    llm_steps=llm_steps,
+                )
+        except RuntimeError as exc:
+            defer_for_openrouter_model_switch(
+                exc,
+                {
+                    "type": "openrouter_rag",
+                    "question": question,
+                    "image_payloads": image_payloads,
+                },
+            )
+            if "Deep Agent" in "\n".join(llm_steps):
                 details = format_rate_limit_details(exc, "Deep Agent automatic collection")
                 log_error("OpenRouter RAG Deep Agent automatic collection", exc, details=f"question={question}\n{details}")
                 render_deep_agent_failure(exc, question=question)
@@ -1143,65 +1265,9 @@ def render_openrouter_rag_chat(force_rebuild: bool) -> None:
                     messages_key="messages",
                     conversation_key="openrouter_rag_conversation_id",
                 )
-                st.stop()
-    try:
-        chatbot = load_chatbot(should_rebuild, "openrouter")
-        chatbot = ensure_rag_chatbot_capabilities(
-            chatbot,
-            lambda: load_chatbot(should_rebuild, "openrouter"),
-        )
-        st.session_state.rebuild_index_next = False
-    except RuntimeError as exc:
-        show_recipe_source_error(exc)
-        st.stop()
-
-    with st.chat_message("assistant"):
-        try:
-            with st.spinner("レシピページを検索して、RAGで十分に答えられるか判定中..."):
-                llm_steps.append("RAG検索: ベクトルDBから関連チャンク取得")
-                retrieval_question = build_image_prompt_text(question, image_payloads)
-                docs = chatbot.retrieve(retrieval_question)
-                llm_steps.append("RAG context判定: OpenRouter free modelで十分性を判定")
-                has_context = chatbot.has_sufficient_context(retrieval_question, docs)
-            if not has_context:
-                llm_steps.append("RAG context判定結果: 不十分")
-                llm_steps.append("Deep Agent検索計画: 自動実行")
-                with st.spinner("ベクトルDBに十分な情報がないため、Deep Agentで自動収集してから回答します..."):
-                    result, response = run_chat_deep_agent_answer(
-                        question=build_image_prompt_text(question, image_payloads),
-                        force_rebuild=True,
-                        load_current_chatbot=lambda rebuild: load_chatbot(rebuild, "openrouter"),
-                    )
-                if result is None and response is None:
-                    st.info("Deep Agent Cloud Run Jobを開始しました。完了後に「状態を更新して回答を続ける」を押してください。")
-                    render_llm_trace("今回のLLM/ツール実行段階", llm_steps)
-                    st.stop()
-                llm_steps.append(f"Deep Agent保存: {len(result.saved_pages)}件")
-                llm_steps.append("RAG回答生成: Deep Agent収集後の文脈で実行")
-                prefix = f"Deep Agentで{len(result.saved_pages)}件の参照を保存しました。\n\n"
-                stream_markdown_text(prefix + response.answer)
-                render_sources(response.sources)
-                render_llm_trace("今回のLLM/ツール実行段階", llm_steps)
-                st.session_state.rebuild_index_next = False
-                st.session_state.messages.append({"role": "assistant", "content": prefix + response.answer})
-                persist_current_conversation(
-                    ai_type="OpenRouter_RAG",
-                    messages_key="messages",
-                    conversation_key="openrouter_rag_conversation_id",
-                )
-                return
-            with st.spinner("RAG文脈を使ってOpenRouter free modelで回答を作成中..."):
-                llm_steps.append("mem0検索: 好み/制約の長期記憶を検索")
-                llm_steps.append("RAG回答生成: OpenRouter free modelで回答作成")
-                if image_payloads and hasattr(chatbot, "answer_from_docs_multimodal"):
-                    response = chatbot.answer_from_docs_multimodal(
-                        question,
-                        docs,
-                        build_multimodal_content(question, image_payloads),
-                    )
-                else:
-                    response = chatbot.answer_from_docs(question, docs)
-                llm_steps.append("mem0保存: 今回の会話を長期記憶へ保存")
+            else:
+                show_recipe_source_error(exc)
+            st.stop()
         except Exception as exc:
             defer_for_openrouter_model_switch(
                 exc,
@@ -1214,7 +1280,10 @@ def render_openrouter_rag_chat(force_rebuild: bool) -> None:
             details = format_rate_limit_details(exc, "OpenRouter RAG chat")
             log_error("OpenRouter RAG chat response generation", exc, details=f"question={question}\n{details}")
             error_message = "OpenRouter RAG回答生成中にエラーが発生しました。"
-            show_generation_error(exc, error_message)
+            if "Deep Agent" in "\n".join(llm_steps):
+                render_deep_agent_failure(exc, question=question)
+            else:
+                show_generation_error(exc, error_message)
             render_llm_trace("今回のLLM/ツール実行段階", llm_steps)
             st.session_state.messages.append({"role": "assistant", "content": error_message})
             persist_current_conversation(

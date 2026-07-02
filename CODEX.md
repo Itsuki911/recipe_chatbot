@@ -143,6 +143,21 @@ Tables:
 
 ## Recent Change History
 
+### 2026-07-02
+
+- OpenRouter / Deep Agent / Crawl4AI改善を `main` に反映:
+  - Feature branch `codex-openrouter-free-models` に実装後、`main` へmerge commit `bd646de` として統合。
+  - `git push origin main` 後、Cloud Build triggerが起動し、Cloud Run Service `recipe-chatbot-web` へdeployされた。
+- 今回の「GitHubにはpush済みなのに公開URLへ新機能が出ない」原因:
+  - 最初はfeature branchだけをpushしており、Cloud Buildが監視する `main` に変更が入っていなかった。
+  - その後 `main` へmerge/pushしたが、Cloud Build / Cloud Run反映中は公開URLが旧revisionを返していた。
+  - Cloud Build `ab03f5d0-0fd9-4fc5-b8ff-37351c19d7ec` が `SUCCESS` になり、Cloud Run revision `recipe-chatbot-web-00003-qfq` がReadyになった後、公開URLで新機能を確認できた。
+- 公開URL確認結果:
+  - URL: `https://recipe-chatbot-web-bvyktzzbcq-an.a.run.app/`
+  - 反映commit: `bd646de`
+  - 配信image: `asia-northeast1-docker.pkg.dev/recipe-chatbot-499108/recipe-chatbot/app:bd646de`
+  - ブラウザで `画像入力` と `このchatは最大5回まで質問できます。残り 5 回。` が表示されることをdesktop/mobile幅で確認。
+
 ### 2026-06-17
 
 - Cloud Run migration:
@@ -216,6 +231,108 @@ Docker:
 ```bash
 docker compose -f docker/docker-compose.yml up --build
 ```
+
+## GitHub / Google Cloud Deployment Runbook
+
+最新機能を公開URLへ素早く反映するための手順。Cloud Build triggerは `main` pushを起点に動く前提。
+
+### 1. GitHubへ反映する
+
+作業ブランチだけをpushしても、Cloud Runに反映されないことがある。公開したい変更は必ず `main` に入れてpushする。
+
+```bash
+git status --short
+git branch --show-current
+git checkout main
+git pull --ff-only origin main
+git merge <feature-branch>
+git push origin main
+```
+
+push後、GitHub側の `main` が期待commitを指しているか確認する。
+
+```bash
+git ls-remote origin main
+```
+
+今回のように「feature branchはpush済みだが公開URLに出ない」場合は、まず `main` にmerge/pushされているかを見る。
+
+### 2. Cloud Buildの起動と完了を確認する
+
+最新buildとcommit short SHAを確認する。
+
+```bash
+gcloud builds list \
+  --project recipe-chatbot-499108 \
+  --limit 5 \
+  --format='table(id,status,createTime,source.repoSource.branchName,substitutions.SHORT_SHA)'
+```
+
+対象buildの状態を確認する。
+
+```bash
+gcloud builds describe <BUILD_ID> \
+  --project recipe-chatbot-499108 \
+  --format='yaml(status,finishTime,logUrl,statusDetail,failureInfo)'
+```
+
+`status: WORKING` の間は、GitHubには反映済みでも公開URLが旧版のままになることがある。`SUCCESS` になるまで待つ。失敗時は `failureInfo` と `logUrl` を見る。
+
+### 3. Cloud Runの配信image / revisionを確認する
+
+Cloud Run serviceが期待image tagを指しているか確認する。
+
+```bash
+gcloud run services describe recipe-chatbot-web \
+  --project recipe-chatbot-499108 \
+  --region asia-northeast1 \
+  --format='yaml(status.latestCreatedRevisionName,status.latestReadyRevisionName,status.conditions,status.url,spec.template.spec.containers[0].image)'
+```
+
+新revisionがReadyか確認する。
+
+```bash
+gcloud run revisions list \
+  --service recipe-chatbot-web \
+  --project recipe-chatbot-499108 \
+  --region asia-northeast1 \
+  --format='table(metadata.name,status.conditions[0].type,status.conditions[0].status,status.conditions[0].message,status.imageDigest)' \
+  --limit 5
+```
+
+`status.conditions` が `Deploying Revision` / `Updating Service` の間は切り替え中。新revisionが `Ready True` になってからURLを確認する。
+
+### 4. 公開URLをブラウザで確認する
+
+公開URL:
+
+```text
+https://recipe-chatbot-web-bvyktzzbcq-an.a.run.app/
+```
+
+今回の反映確認で見たチェックポイント:
+
+- Page titleが `Recipe RAG Chatbot`
+- Sidebarに `OpenRouter RAG Chat`, `OpenRouter Chat`, `past conversation`, `Crawl4AI Check`, `Adaptive Crawl`
+- OpenRouter RAG Chatに `画像入力`
+- `このchatは最大5回まで質問できます。残り 5 回。`
+- Desktop幅とmobile幅の両方で主要UIが表示される
+
+### 5. 反映されない時の切り分け
+
+- GitHubの `main` が最新commitを指していない:
+  - feature branchだけpushしている可能性が高い。`main` にmergeして `git push origin main` する。
+- Cloud Buildが `WORKING`:
+  - build/deploy中。旧Cloud Run revisionがまだ配信されることがある。
+- Cloud Buildが `SUCCESS` だがCloud Runが旧image:
+  - Cloud Run service describeで `spec.template.spec.containers[0].image` を確認する。
+  - build triggerのdeploy step、またはCloud Run更新権限/region/service名を確認する。
+- Cloud Runが新imageだがURLが旧表示:
+  - revisionがReadyになるまで待つ。
+  - ブラウザをreloadする。
+  - Streamlit session stateやcacheの影響が疑われる場合は、別タブ/シークレットウィンドウでも確認する。
+- 本番で生成されるruntime state:
+  - `data/openrouter_active_model.txt` はローカル実行時にできる未追跡ファイル。通常はcommitしない。
 
 ## Development Guidance
 
